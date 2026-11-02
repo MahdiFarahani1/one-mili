@@ -5,9 +5,20 @@ const StageScript = preload("res://scripts/stage.gd")
 const JellyScript = preload("res://entities/jelly.gd")
 const JELLY_MENU = preload("res://assets/sprites/jelly_classic.png")
 const FONT = preload("res://assets/fonts/Vazirmatn.ttf")
-const BACKGROUNDS = [preload("res://assets/backgrounds/candy.png"), preload("res://assets/backgrounds/jungle.png"), preload("res://assets/backgrounds/crystal.png"), preload("res://assets/backgrounds/moon.png"), preload("res://assets/backgrounds/factory.png")]
-const WORLD_TAGLINES := ["دقت و پرش‌های نفس‌گیر", "ریتم و تله‌های متحرک", "مسیرهای مرگبار و واکنش سریع", "کنترل جاذبه و بی‌وزنی", "آزمون نهایی تمام مهارت‌ها"]
-const LEVEL_POINTS := [Vector2(120, 1030), Vector2(286, 946), Vector2(493, 967), Vector2(590, 839), Vector2(430, 744), Vector2(220, 781), Vector2(112, 647), Vector2(288, 563), Vector2(502, 584), Vector2(593, 460), Vector2(421, 369), Vector2(224, 403)]
+const BACKGROUNDS = [
+	preload("res://assets/backgrounds/candy.png"),
+	preload("res://assets/backgrounds/jungle.png"),
+	preload("res://assets/backgrounds/crystal.png"),
+	preload("res://assets/backgrounds/moon.png"),
+	preload("res://assets/backgrounds/factory.png")
+]
+const WORLD_TAGLINES := [
+	"پرواز بر فراز جزایر معلق با فرودهای میلی‌متری",
+	"گذر از ریتم تله‌های گیاهی و قارچ‌های شب‌تاب",
+	"مسیرخوانی در میان بلورهای درخشان و شکننده",
+	"مهار جاذبه در مدارهای بی‌وزنی و پرتال‌های کیهانی",
+	"نبرد نهایی با چرخ‌دنده‌ها، پیستون‌ها و لیزرهای سرخ"
+]
 
 var screen := "splash"
 var ui: Control
@@ -58,27 +69,25 @@ func _draw() -> void:
 		return
 	var theme_index := ["candy", "jungle", "crystal", "moon", "factory"].find(str(Save.data.get("theme", "candy")))
 	var world := selected_world if screen in ["worlds", "levels"] else (int(Data.level(selected_level)["world"]) if screen in ["victory", "over"] and not endless_run else maxi(0, theme_index))
+	
+	# Background art with dark fantasy vignette overlay
 	draw_texture_rect(BACKGROUNDS[world], Rect2(0, 0, 720, 1280), false)
-	draw_rect(Rect2(0, 0, 720, 1280), Color("030719", 0.42))
-	draw_rect(Rect2(0, 0, 720, 145), Color("050a1c", 0.72))
-	draw_rect(Rect2(0, 1090, 720, 190), Color("050a1c", 0.38))
+	draw_rect(Rect2(0, 0, 720, 1280), Color("030719", 0.44))
+	draw_rect(Rect2(0, 0, 720, 145), Color("050a1c", 0.75))
+	draw_rect(Rect2(0, 1090, 720, 190), Color("050a1c", 0.65))
+	
+	# Ambient glowing runes / dust
 	for i in 18:
 		var p := Vector2(float((i * 293 + 57) % 720), float((i * 177 + 41) % 1280))
-		draw_circle(p + Vector2(0, sin(anim * 1.5 + i) * 4), 1.4 + i % 3, Color("ffdd9b", 0.48))
-	if screen == "levels":
-		for i in LEVEL_POINTS.size() - 1:
-			draw_line(LEVEL_POINTS[i], LEVEL_POINTS[i + 1], Color("e08cff", 0.18), 15, true)
-			draw_line(LEVEL_POINTS[i], LEVEL_POINTS[i + 1], Color("e9a7ff", 0.81), 4, true)
-		for p in LEVEL_POINTS:
-			draw_circle(p, 52, Color("a572ff", 0.14))
-			draw_circle(p, 47, Color("e5b5ff", 0.28))
+		draw_circle(p + Vector2(0, sin(anim * 1.5 + i) * 5), 1.5 + float(i % 3), Color("ffdd9b", 0.45))
+		
 	if screen in ["splash", "menu"]:
 		var center := Vector2(360, 431 + sin(anim * 2.2) * 10.0)
-		draw_circle(center, 101, Color("ffae70", 0.08))
-		draw_circle(center, 89, Color("7fbbff", 0.10))
+		draw_circle(center, 106, Color("7fbbff", 0.08))
+		draw_circle(center, 88, Color("a88cff", 0.12))
 		draw_texture_rect(JELLY_MENU, Rect2(center - Vector2(74, 74), Vector2(148, 148)), false)
-		draw_arc(center, 78, 0, TAU, 96, Color("a8dfff", 0.9), 5, true)
-		draw_arc(center, 72, PI * 0.96, PI * 1.75, 48, Color("fff6fb", 0.66), 4, true)
+		draw_arc(center, 78, 0, TAU, 96, Color("38b6ff", 0.85), 4, true)
+		draw_arc(center, 72, PI * 0.96, PI * 1.75, 48, Color("ffffff", 0.7), 3, true)
 		var blink := fmod(anim, 3.8) < 0.14
 		if blink:
 			draw_line(center + Vector2(-19, 1), center + Vector2(-7, 1), Color("233253"), 3, true)
@@ -89,8 +98,10 @@ func _draw() -> void:
 			draw_circle(center + Vector2(-16, -5), 2, Color.WHITE)
 			draw_circle(center + Vector2(13, -5), 2, Color.WHITE)
 		draw_arc(center + Vector2(0, 12), 9, 0.15, PI - 0.15, 16, Color("28416b"), 3, true)
+		
 	if toast_time > 0.0:
-		draw_rect(Rect2(105, 1138, 510, 76), Color("0d1630", 0.90))
+		draw_rect(Rect2(105, 1138, 510, 76), Color("0d1630", 0.92))
+		draw_rect(Rect2(105, 1138, 510, 76), Color("597fff", 0.45), false, 2)
 
 func clear_ui() -> void:
 	for child in ui.get_children():
@@ -106,8 +117,8 @@ func show_screen(next: String) -> void:
 		Sound.music(0)
 	match next:
 		"splash":
-			label("یک میلی‌متر", 95, 175, 530, 88, 62, Color("fff8ef"))
-			label("O N E   M I L L I M E T E R", 80, 262, 560, 52, 20, Color("d7e7ff"))
+			label("یک میلی‌متر", 95, 175, 530, 88, 64, Color("fff8ef"))
+			label("O N E   M I L L I M E T E R", 80, 262, 560, 52, 21, Color("74ddff"))
 			label("لمس کن، جهان را بچرخان", 90, 606, 540, 60, 28, Color("fff2d4"))
 		"menu": build_menu()
 		"worlds": build_worlds()
@@ -131,10 +142,9 @@ func label(value: String, x: float, y: float, w: float, h: float, size: int = 30
 	n.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	n.add_theme_font_override("font", FONT)
 	n.add_theme_font_size_override("font_size", size)
-	var text_color := Color("e9e6ff") if color.get_luminance() < 0.55 else color
-	n.add_theme_color_override("font_color", text_color)
-	n.add_theme_color_override("font_shadow_color", Color("030716", 0.75))
-	n.add_theme_constant_override("shadow_offset_y", 3)
+	n.add_theme_color_override("font_color", color)
+	n.add_theme_color_override("font_shadow_color", Color("02040d", 0.9))
+	n.add_theme_constant_override("shadow_offset_y", 2)
 	n.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(n)
 	return n
@@ -151,13 +161,13 @@ func button(value: String, x: float, y: float, w: float, h: float, action: Calla
 	b.add_theme_color_override("font_pressed_color", Color("fff5da"))
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		var style := StyleBoxFlat.new()
-		style.bg_color = color.darkened(0.70) if state == "hover" else (color.darkened(0.82) if state == "pressed" else Color("11142f", 0.95))
-		style.set_corner_radius_all(int(minf(26.0, h * 0.28)))
-		style.border_color = color.darkened(0.18)
+		style.bg_color = color.darkened(0.68) if state == "hover" else (color.darkened(0.82) if state == "pressed" else Color("0e122b", 0.94))
+		style.set_corner_radius_all(int(minf(24.0, h * 0.32)))
+		style.border_color = color.darkened(0.15) if state != "disabled" else Color("3c4263")
 		style.set_border_width_all(2 if state == "disabled" else 3)
-		style.shadow_color = Color(color.r, color.g, color.b, 0.36)
+		style.shadow_color = Color(color.r, color.g, color.b, 0.40)
 		style.shadow_size = 12 if state != "pressed" else 4
-		style.shadow_offset = Vector2(0, 5)
+		style.shadow_offset = Vector2(0, 4)
 		b.add_theme_stylebox_override(state, style)
 	b.pressed.connect(func(): Sound.tone("tap"); action.call())
 	ui.add_child(b)
@@ -170,24 +180,25 @@ func safe_top() -> float:
 	return clampf(float(DisplayServer.get_display_safe_area().position.y) * 1280.0 / viewport_height, 0.0, 90.0)
 
 func title(value: String, back: String = "menu") -> void:
-	button("‹", 34, 43, 70, 70, func(): show_screen(back), Color("a8c4f8"), 39)
-	label(value, 118, 48, 480, 66, 42, Color.WHITE)
-	button("✦ %d" % int(Save.data["crystals"]), 505, 130, 165, 55, func(): show_screen("shop"), Color("b888ff"), 23)
+	button("‹", 34, 43, 70, 70, func(): show_screen(back), Color("74ddff"), 39)
+	label(value, 118, 48, 480, 66, 40, Color.WHITE)
+	button("✦ %d" % int(Save.data["crystals"]), 505, 130, 165, 55, func(): show_screen("shop"), Color("ffb84d"), 23)
 
 func build_menu() -> void:
 	Save.ensure_daily()
-	button("✦  %d   +" % int(Save.data["crystals"]), 32, 42, 200, 62, func(): show_screen("shop"), Color("b58fff"), 24)
-	label("یک میلی‌متر", 75, 171, 570, 96, 66, Color("fff8ee"))
-	label("O N E   M I L L I M E T E R", 80, 264, 560, 50, 19, Color("d9e7ff"))
-	label("یک لمس، دنیایی دیگر", 80, 543, 560, 50, 25, Color("e8d8ff"))
-	button("▶  شروع ماجراجویی", 116, 621, 488, 88, func(): show_screen("worlds"), Color("b68aff"), 35)
-	button("∞  حالت بی‌پایان", 144, 733, 432, 71, func(): start_endless(), Color("9cb9ff"))
-	button("مراحل", 74, 834, 270, 67, func(): show_screen("worlds"), Color("a8bbf0"))
-	button("فروشگاه", 376, 834, 270, 67, func(): show_screen("shop"), Color("dab0ff"))
-	button("شخصی‌سازی", 74, 922, 270, 67, func(): show_screen("custom"), Color("b8ecff"))
-	button("تنظیمات", 376, 922, 270, 67, func(): show_screen("settings"), Color("f2c398"))
-	button("دستاوردها", 74, 1010, 270, 67, func(): show_screen("achievements"), Color("eaaad9"))
-	button("چالش %d/%d" % [int(Save.data["daily"]["progress"]), int(Save.data["daily"]["target"])], 376, 1010, 270, 67, func(): claim_daily(), Color("ffda89"))
+	button("✦  %d   +" % int(Save.data["crystals"]), 32, 42, 200, 62, func(): show_screen("shop"), Color("ffb84d"), 24)
+	label("یک میلی‌متر", 75, 171, 570, 96, 68, Color("fff8ee"))
+	label("O N E   M I L L I M E T E R", 80, 264, 560, 50, 20, Color("74ddff"))
+	label("یک لمس، دنیایی دیگر", 80, 543, 560, 50, 25, Color("cbd8ff"))
+	
+	button("▶  شروع ماجراجویی", 116, 621, 488, 88, func(): show_screen("worlds"), Color("38b6ff"), 35)
+	button("∞  حالت بی‌پایان", 144, 733, 432, 71, func(): start_endless(), Color("b566ff"), 29)
+	button("مراحل", 74, 834, 270, 67, func(): show_screen("worlds"), Color("3fe08c"), 27)
+	button("فروشگاه", 376, 834, 270, 67, func(): show_screen("shop"), Color("ffb84d"), 27)
+	button("شخصی‌سازی", 74, 922, 270, 67, func(): show_screen("custom"), Color("6a7eff"), 27)
+	button("تنظیمات", 376, 922, 270, 67, func(): show_screen("settings"), Color("b566ff"), 27)
+	button("دستاوردها", 74, 1010, 270, 67, func(): show_screen("achievements"), Color("ff7a29"), 27)
+	button("چالش %d/%d" % [int(Save.data["daily"]["progress"]), int(Save.data["daily"]["target"])], 376, 1010, 270, 67, func(): claim_daily(), Color("ffd84d"), 27)
 
 func build_worlds() -> void:
 	title("انتخاب جهان")
@@ -196,31 +207,45 @@ func build_worlds() -> void:
 		var index := i
 		var unlocked := Save.unlocked_level() >= i * 12 + 1
 		var y := 246.0 + i * 168.0
-		var card := button("", 56, y, 608, 143, func(): select_world(index, unlocked), Data.WORLD_COLORS[i], 27)
+		var card := button("", 56, y, 608, 144, func(): select_world(index, unlocked), Data.WORLD_COLORS[i], 27)
+		
+		var holder := Control.new()
+		holder.position = Vector2(446, 12)
+		holder.size = Vector2(150, 120)
+		holder.clip_contents = true
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(holder)
+		
 		var art := TextureRect.new()
 		art.texture = BACKGROUNDS[i]
-		art.position = Vector2(9, 9)
-		art.size = Vector2(188, 125)
+		art.position = Vector2.ZERO
+		art.size = Vector2(150, 120)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.add_child(art)
+		holder.add_child(art)
+		
 		var title_text := Label.new()
-		title_text.text = Data.WORLD_FA[i] if unlocked else Data.WORLD_FA[i] + "  🔒"
-		title_text.position = Vector2(208, 17)
-		title_text.size = Vector2(380, 48)
+		title_text.text = (Data.WORLD_FA[i] + "  ·  %d/12" % completed_in_world(i)) if unlocked else (Data.WORLD_FA[i] + "  🔒")
+		title_text.position = Vector2(20, 16)
+		title_text.size = Vector2(410, 48)
+		title_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		title_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		title_text.add_theme_font_override("font", FONT)
-		title_text.add_theme_font_size_override("font_size", 31)
-		title_text.add_theme_color_override("font_color", Color.WHITE)
+		title_text.add_theme_font_size_override("font_size", 30)
+		title_text.add_theme_color_override("font_color", Color.WHITE if unlocked else Color("9fa4be"))
 		title_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_child(title_text)
+		
 		var detail := Label.new()
-		detail.text = WORLD_TAGLINES[i] + "  ·  %d/12" % completed_in_world(i)
-		detail.position = Vector2(208, 75)
-		detail.size = Vector2(382, 47)
+		detail.text = WORLD_TAGLINES[i]
+		detail.position = Vector2(20, 74)
+		detail.size = Vector2(410, 48)
+		detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		detail.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		detail.add_theme_font_override("font", FONT)
 		detail.add_theme_font_size_override("font_size", 19)
-		detail.add_theme_color_override("font_color", Color("d0d6f5"))
+		detail.add_theme_color_override("font_color", Color("d0d6f5") if unlocked else Color("7c83a4"))
 		detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_child(detail)
 
@@ -230,12 +255,6 @@ func completed_in_world(world: int) -> int:
 		if Save.data["levels"].has(str(world * 12 + i + 1)):
 			count += 1
 	return count
-
-func persian_number(value: int) -> String:
-	var result := str(value)
-	for i in 10:
-		result = result.replace(str(i), "۰۱۲۳۴۵۶۷۸۹"[i])
-	return result
 
 func build_levels() -> void:
 	title(Data.WORLD_FA[selected_world], "worlds")
@@ -247,12 +266,12 @@ func build_levels() -> void:
 		var col := i % 3
 		var row := i / 3
 		var x := 85.0 + float(col) * 192.0
-		var y := 300.0 + float(row) * 176.0
-		var card := button(str(i + 1) if unlocked else "🔒", x, y, 164, 136, func(): select_level(number, unlocked), Data.WORLD_COLORS[selected_world] if unlocked else Color("686b88"), 45)
+		var y := 280.0 + float(row) * 180.0
+		var card := button(str(i + 1) if unlocked else "🔒", x, y, 164, 140, func(): select_level(number, unlocked), Data.WORLD_COLORS[selected_world] if unlocked else Color("595c73"), 44)
 		if stars > 0:
 			var star_text := Label.new()
 			star_text.text = "★".repeat(stars)
-			star_text.position = Vector2(8, 96)
+			star_text.position = Vector2(8, 98)
 			star_text.size = Vector2(148, 35)
 			star_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			star_text.add_theme_font_override("font", FONT)
@@ -260,7 +279,7 @@ func build_levels() -> void:
 			star_text.add_theme_color_override("font_color", Color("ffe18a"))
 			star_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			card.add_child(star_text)
-	label("★  %d / ۳۶ ستاره" % stars_in_world(selected_world), 160, 1081, 400, 56, 28, Color("ffe7ad"))
+	label("★  %d / ۳۶ ستاره جهان" % stars_in_world(selected_world), 160, 1081, 400, 56, 28, Color("ffe7ad"))
 
 func stars_in_world(world: int) -> int:
 	var count := 0
@@ -293,11 +312,11 @@ func start_stage() -> void:
 	button("Ⅱ", 595, 72, 74, 72, func(): screen = "pause"; build_pause(), Color("fff4d2"), 34)
 	label("مرحله %d" % selected_level if not endless_run else "بی‌پایان · %d" % endless_score, 72, 72, 430, 65, 37, Color.WHITE)
 	create_hud_metrics()
-	button("↻", 40, 1168, 95, 74, func(): stage.restart(), Color("aabaff"), 36)
+	button("↻", 40, 1168, 95, 74, func(): stage.restart(), Color("74ddff"), 36)
 	hud_hint_label = label("لمس کن تا جاذبه بچرخد" if selected_level <= 3 and not endless_run else "چرخش  ۰", 147, 1178, 500, 56, 24, Color.WHITE)
 
 func create_hud_metrics() -> void:
-	hud_direction_label = label("↓", 36, 152, 80, 58, 35, Color("a8e6ff"))
+	hud_direction_label = label("↓", 36, 152, 80, 58, 35, Color("74ddff"))
 	hud_timer_label = label("◷  00:00", 125, 152, 275, 58, 28, Color("fff2dc"))
 	hud_crystal_label = label("✦  0/0", 420, 152, 220, 58, 26, Color("ffde98"))
 
@@ -347,15 +366,23 @@ func build_pause() -> void:
 	if stage != null:
 		stage.process_mode = Node.PROCESS_MODE_DISABLED
 		for child in ui.get_children(): child.queue_free()
+	
+	# Frosted dark overlay
 	var shade := ColorRect.new()
-	shade.color = Color("24133e", 0.62)
+	shade.color = Color("040714", 0.75)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(shade)
-	label("مکث کوچولو", 100, 348, 520, 90, 52, Color.WHITE)
-	button("ادامه", 138, 530, 444, 80, func(): screen = "game"; stage.player.alive = true; show_game_hud(), Color("fff1b1"))
-	button("شروع دوباره", 138, 634, 444, 80, func(): show_screen("game"), Color("d8f8ef"))
-	button("فهرست مراحل", 138, 738, 444, 80, func(): show_screen("levels"), Color("ffe4ef"))
+	
+	var card := make_modal_panel(110, 300, 500, 480, Color("38b6ff"))
+	ui.add_child(card)
+	
+	label("مکث", 110, 320, 500, 70, 50, Color.WHITE)
+	label("مرحله %d" % selected_level if not endless_run else "حالت بی‌پایان", 110, 395, 500, 45, 24, Color("cbd8ff"))
+	
+	button("ادامه", 150, 470, 420, 76, func(): screen = "game"; stage.player.alive = true; show_game_hud(), Color("3fe08c"), 30)
+	button("شروع دوباره", 150, 565, 420, 76, func(): show_screen("game"), Color("74ddff"), 30)
+	button("فهرست مراحل", 150, 660, 420, 76, func(): show_screen("levels"), Color("b566ff"), 30)
 
 func show_game_hud() -> void:
 	if stage != null:
@@ -364,33 +391,77 @@ func show_game_hud() -> void:
 	button("Ⅱ", 595, 72, 74, 72, func(): screen = "pause"; build_pause(), Color("fff4d2"), 34)
 	label("مرحله %d" % selected_level if not endless_run else "بی‌پایان · %d" % endless_score, 72, 72, 430, 65, 37, Color.WHITE)
 	create_hud_metrics()
-	button("↻", 40, 1168, 95, 74, func(): stage.restart(), Color("aabaff"), 36)
+	button("↻", 40, 1168, 95, 74, func(): stage.restart(), Color("74ddff"), 36)
 	hud_hint_label = label("لمس کن تا جاذبه بچرخد" if selected_level <= 3 and not endless_run else "چرخش  ۰", 147, 1178, 500, 56, 24, Color.WHITE)
 
 func build_victory() -> void:
 	var result: Dictionary = get_meta("last_result", {})
-	label("درخشان بود!", 80, 310, 560, 90, 54, Color.WHITE)
-	var star_label := label("★".repeat(int(result.get("stars", 1))), 120, 405, 480, 100, 67, Color("fff5ac"))
+	var stars: int = int(result.get("stars", 1))
+	
+	var shade := ColorRect.new()
+	shade.color = Color("040714", 0.75)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(shade)
+	
+	var card := make_modal_panel(80, 240, 560, 760, Color("ffd45e"))
+	ui.add_child(card)
+	
+	label("پیروزی درخشان!", 80, 265, 560, 80, 52, Color("fff8d4"))
+	
+	var star_label := label("★".repeat(stars), 120, 360, 480, 80, 64, Color("ffe18a"))
 	star_label.pivot_offset = star_label.size / 2.0
-	star_label.scale = Vector2(0.65, 0.65)
-	create_tween().tween_property(star_label, "scale", Vector2.ONE, 0.44).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	if int(result.get("stars", 1)) == 3:
-		label("اجرای بی‌نقص!", 140, 487, 440, 50, 26, Color("fff6b5"))
-	label("زمان  %.1f ثانیه    ·    %d چرخش" % [float(result.get("seconds", 0)), int(result.get("turns", 0))], 80, 525, 560, 70, 29, Color("5b3d69"))
-	label("+%d کریستال" % int(result.get("reward", 0)), 110, 610, 500, 70, 34, Color("fffde4"))
-	button("مرحلهٔ بعد", 136, 746, 448, 83, func(): selected_level = mini(60, selected_level + 1); show_screen("game"), Color("fff0a8"))
-	button("دوباره", 136, 850, 448, 77, func(): show_screen("game"), Color("e1f7ef"))
-	button("فهرست مراحل", 136, 948, 448, 77, func(): show_screen("levels"), Color("ffe6f0"))
+	star_label.scale = Vector2(0.5, 0.5)
+	create_tween().tween_property(star_label, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	
+	if stars == 3:
+		label("اجرای بی‌نقص و مهارتی!", 120, 445, 480, 45, 25, Color("9fffe8"))
+		
+	label("زمان: %.1f ثانیه   ·   چرخش: %d" % [float(result.get("seconds", 0)), int(result.get("turns", 0))], 90, 505, 540, 60, 26, Color("cbd8ff"))
+	label("+%d کریستال پاداش ✦" % int(result.get("reward", 0)), 90, 575, 540, 60, 32, Color("ffe794"))
+	
+	button("مرحلهٔ بعدی  ▶", 130, 675, 460, 84, func(): selected_level = mini(60, selected_level + 1); show_screen("game"), Color("38b6ff"), 33)
+	button("تلاش مجدد  ↻", 130, 775, 460, 76, func(): show_screen("game"), Color("3fe08c"), 28)
+	button("فهرست مراحل", 130, 865, 460, 76, func(): show_screen("levels"), Color("b566ff"), 28)
 
 func build_over() -> void:
-	label("اوه، نزدیک بود!", 75, 355, 570, 90, 51, Color.WHITE)
-	label("فقط یک چرخش تا پیروزی فاصله داری", 80, 465, 560, 60, 26, Color("68486f"))
+	var shade := ColorRect.new()
+	shade.color = Color("040714", 0.78)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(shade)
+	
+	var card := make_modal_panel(80, 270, 560, 690, Color("ff4971"))
+	ui.add_child(card)
+	
+	label("فرود ناموفق!", 80, 295, 560, 80, 52, Color("fff0f3"))
+	label("فقط یک چرخش با پیروزی فاصله داشتی", 90, 385, 540, 50, 25, Color("ffbdc9"))
+	
 	if endless_run:
-		label("امتیاز %d   ·   رکورد %d" % [endless_score, int(Save.data["endless_best"])], 80, 566, 560, 70, 34, Color.WHITE)
+		label("امتیاز %d   ·   رکورد %d" % [endless_score, int(Save.data["endless_best"])], 90, 455, 540, 60, 32, Color.WHITE)
 		if endless_score > 0 and endless_score == int(Save.data["endless_best"]):
-			label("رکورد تازه! ✦", 120, 633, 480, 60, 32, Color("fff4a7"))
-	button("تلاش دوباره  ↻", 137, 721, 446, 85, func(): retry_after_loss(), Color("fff1b4"))
-	button("بازگشت", 137, 827, 446, 78, func(): show_screen("menu" if endless_run else "levels"), Color("e5f8ee"))
+			label("رکورد تازه! ✦", 120, 515, 480, 50, 28, Color("ffe18a"))
+	else:
+		label("مرحله %d" % selected_level, 90, 455, 540, 55, 30, Color("cbd8ff"))
+		
+	button("تلاش دوباره  ↻", 130, 620, 460, 86, func(): retry_after_loss(), Color("ffb84d"), 34)
+	button("فهرست مراحل", 130, 725, 460, 76, func(): show_screen("levels" if not endless_run else "menu"), Color("74ddff"), 28)
+
+func make_modal_panel(x: float, y: float, w: float, h: float, border_glow: Color) -> Panel:
+	var panel := Panel.new()
+	panel.position = Vector2(x, y)
+	panel.size = Vector2(w, h)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("0c102b", 0.96)
+	style.set_corner_radius_all(32)
+	style.border_color = border_glow
+	style.set_border_width_all(3)
+	style.shadow_color = Color(border_glow.r, border_glow.g, border_glow.b, 0.42)
+	style.shadow_size = 20
+	style.shadow_offset = Vector2(0, 6)
+	panel.add_theme_stylebox_override("panel", style)
+	return panel
 
 func start_endless() -> void:
 	endless_run = true
@@ -407,7 +478,7 @@ func retry_after_loss() -> void:
 func pop_toast(message: String) -> void:
 	toast = message
 	toast_time = 1.7
-	label(message, 105, 1139, 510, 70, 30, Color.WHITE)
+	label(message, 105, 1139, 510, 70, 28, Color.WHITE)
 
 func claim_daily() -> void:
 	var reward := Save.daily_claim()
@@ -417,62 +488,106 @@ func claim_daily() -> void:
 
 func build_shop() -> void:
 	title("فروشگاه کریستالی")
-	label("آیتم‌های تازه، با کریستال‌های خودت", 70, 175, 580, 65, 25, Color("63476c"))
-	button("اسکین‌ها", 80, 257, 270, 70, func(): build_shop_list("skins"), Color("ffe9f0"))
-	button("رد حرکت", 370, 257, 270, 70, func(): build_shop_list("trails"), Color("e1f7fc"))
-	button("تم‌ها", 80, 346, 560, 70, func(): build_shop_list("themes"), Color("f6e8ff"))
-	label("پرداخت واقعی در این نسخه فعال نیست.", 95, 470, 530, 70, 24, Color("614c71"))
-	label("همهٔ آیتم‌های این صفحه با بازی‌کردن باز می‌شوند.", 65, 530, 590, 70, 23, Color("614c71"))
-	label("★  اسکین کلاسیک و رد درخشش از ابتدا در دسترس‌اند", 68, 650, 584, 75, 25, Color("fff9e7"))
+	label("آیتم‌های اختصاصی با کریستال‌های به‌دست‌آمده", 70, 180, 580, 50, 24, Color("cbd8ff"))
+	
+	button("اسکین‌های ژله", 80, 255, 265, 75, func(): build_shop_list("skins"), Color("38b6ff"), 27)
+	button("رد حرکت نئونی", 375, 255, 265, 75, func(): build_shop_list("trails"), Color("b566ff"), 27)
+	button("تم‌های محیطی", 80, 350, 560, 75, func(): build_shop_list("themes"), Color("3fe08c"), 27)
+	
+	var info_box := make_modal_panel(75, 480, 570, 320, Color("4f78ff"))
+	ui.add_child(info_box)
+	label("سیستم کاملاً آفلاین و عادلانه", 90, 510, 540, 55, 29, Color("ffe18a"))
+	label("تمام اسکین‌ها، رد‌های حرکتی و تم‌ها", 90, 575, 540, 45, 23, Color.WHITE)
+	label("فقط با بازی‌کردن و مهارت خودت باز می‌شوند.", 90, 620, 540, 45, 23, Color("cbd8ff"))
+	label("★ اسکین کلاسیک و رد درخشش از آغاز فعال‌اند", 90, 695, 540, 50, 23, Color("9fffe8"))
 
 func build_shop_list(category: String) -> void:
 	for child in ui.get_children(): child.queue_free()
-	var heading := "اسکین‌ها" if category == "skins" else ("رد حرکت" if category == "trails" else "تم‌های محیط")
-	button("‹", 34, 43, 70, 70, func(): show_screen("shop"), Color.WHITE, 39)
-	label(heading, 130, 52, 460, 60, 42)
-	label("✦ %d کریستال" % int(Save.data["crystals"]), 120, 141, 480, 65, 27, Color("69436c"))
+	var heading := "اسکین‌های ژله" if category == "skins" else ("رد حرکت نئونی" if category == "trails" else "تم‌های محیطی")
+	button("‹", 34, 43, 70, 70, func(): show_screen("shop"), Color("74ddff"), 39)
+	label(heading, 130, 52, 460, 60, 40)
+	button("✦ %d" % int(Save.data["crystals"]), 505, 130, 165, 55, func(): {}, Color("ffb84d"), 23)
+	
 	var names: Array = Data.SKIN_NAMES if category == "skins" else (Data.TRAIL_NAMES if category == "trails" else Data.WORLD_FA)
 	var ids: Array = Data.SKINS if category == "skins" else (Data.TRAILS if category == "trails" else ["candy", "jungle", "crystal", "moon", "factory"])
+	
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(45, 235)
-	scroll.size = Vector2(630, 910)
+	scroll.position = Vector2(45, 210)
+	scroll.size = Vector2(630, 930)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	ui.add_child(scroll)
+	
 	var list := VBoxContainer.new()
-	list.custom_minimum_size = Vector2(607, 0)
-	list.add_theme_constant_override("separation", 18)
+	list.custom_minimum_size = Vector2(610, 0)
+	list.add_theme_constant_override("separation", 16)
 	scroll.add_child(list)
+	
 	for i in ids.size():
 		var item: String = ids[i]
 		var owned := Save.own(category, item)
 		var cost := Data.shop_cost(category, i)
+		
 		var row := PanelContainer.new()
 		var style := StyleBoxFlat.new()
-		style.bg_color = Color("fff5e9") if owned else Color("f8e9fa")
-		style.set_corner_radius_all(28)
-		style.set_content_margin_all(14)
+		style.bg_color = Color("0d1330", 0.94)
+		style.set_corner_radius_all(22)
+		style.set_content_margin_all(12)
+		style.border_color = Color("38b6ff", 0.6) if owned else Color("59668d", 0.5)
+		style.set_border_width_all(2)
+		style.shadow_color = Color(0.1, 0.2, 0.5, 0.25)
+		style.shadow_size = 8
 		row.add_theme_stylebox_override("panel", style)
-		row.custom_minimum_size.y = 95
+		row.custom_minimum_size.y = 100
 		list.add_child(row)
+		
 		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 10)
+		h.add_theme_constant_override("separation", 14)
 		row.add_child(h)
+		
+		# Thumbnail
+		var icon_holder := Control.new()
+		icon_holder.custom_minimum_size = Vector2(76, 76)
+		if category == "skins":
+			var tex: Texture2D = Jelly.BODY_TEXTURES.get(item, Jelly.BODY_TEXTURES["classic"])
+			var icon_rect := TextureRect.new()
+			icon_rect.texture = tex
+			icon_rect.size = Vector2(68, 68)
+			icon_rect.position = Vector2(4, 4)
+			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon_holder.add_child(icon_rect)
+		elif category == "themes":
+			var theme_idx := ["candy", "jungle", "crystal", "moon", "factory"].find(item)
+			var icon_rect := TextureRect.new()
+			icon_rect.texture = BACKGROUNDS[maxi(0, theme_idx)]
+			icon_rect.size = Vector2(68, 68)
+			icon_rect.position = Vector2(4, 4)
+			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			icon_holder.add_child(icon_rect)
+		h.add_child(icon_holder)
+		
 		var name_label := Label.new()
-		name_label.text = "✦  " + str(names[i])
+		name_label.text = str(names[i])
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		name_label.add_theme_font_override("font", FONT)
-		name_label.add_theme_font_size_override("font_size", 26)
-		name_label.add_theme_color_override("font_color", Color("5a3b65"))
+		name_label.add_theme_font_size_override("font_size", 27)
+		name_label.add_theme_color_override("font_color", Color.WHITE if owned else Color("d6dbf5"))
 		h.add_child(name_label)
+		
 		var buy := Button.new()
-		buy.text = "دارم" if owned else "✦ %d" % cost
+		buy.text = "دارم ✓" if owned else "✦ %d" % cost
 		buy.disabled = owned
-		buy.custom_minimum_size = Vector2(145, 65)
+		buy.custom_minimum_size = Vector2(150, 68)
 		buy.add_theme_font_override("font", FONT)
-		buy.add_theme_font_size_override("font_size", 23)
+		buy.add_theme_font_size_override("font_size", 24)
+		
 		var bs := StyleBoxFlat.new()
-		bs.bg_color = Color("d8f5e3") if owned else Color("fff0ac")
-		bs.set_corner_radius_all(25)
+		bs.bg_color = Color("23694f", 0.9) if owned else Color("996b1b", 0.95)
+		bs.set_corner_radius_all(20)
+		bs.border_color = Color("3fe08c") if owned else Color("ffd45e")
+		bs.set_border_width_all(2)
 		buy.add_theme_stylebox_override("normal", bs)
 		buy.add_theme_stylebox_override("disabled", bs)
 		buy.pressed.connect(func():
@@ -485,24 +600,32 @@ func build_shop_list(category: String) -> void:
 		h.add_child(buy)
 
 func build_custom() -> void:
-	title("ژلهٔ من")
-	label("اسکین انتخابی", 95, 143, 530, 64, 32, Color("68456b"))
+	title("شخصی‌سازی")
+	label("اسکین انتخابی", 95, 140, 530, 55, 30, Color("cbd8ff"))
+	
+	var preview_panel := make_modal_panel(180, 205, 360, 220, Color("38b6ff"))
+	ui.add_child(preview_panel)
+	
 	var preview: Jelly = JellyScript.new()
-	preview.position = Vector2(360, 285)
-	preview.scale = Vector2(2.8, 2.8)
+	preview.position = Vector2(360, 315)
+	preview.scale = Vector2(2.6, 2.6)
 	preview.skin = str(Save.data["skin"])
 	preview.alive = false
 	ui.add_child(preview)
-	label(Data.SKIN_NAMES[maxi(0, Data.SKINS.find(Save.data["skin"]))], 110, 358, 500, 60, 32, Color.WHITE)
-	button("اسکین قبلی", 75, 436, 270, 70, func(): cycle_owned("skins", -1), Color("fff1d4"))
-	button("اسکین بعدی", 375, 436, 270, 70, func(): cycle_owned("skins", 1), Color("fff1d4"))
-	label("رد حرکت", 95, 548, 530, 55, 32, Color("68456b"))
-	label(Data.TRAIL_NAMES[maxi(0, Data.TRAILS.find(Save.data["trail"]))], 110, 600, 500, 55, 30, Color.WHITE)
-	button("رد قبلی", 75, 672, 270, 70, func(): cycle_owned("trails", -1), Color("dcf8f3"))
-	button("رد بعدی", 375, 672, 270, 70, func(): cycle_owned("trails", 1), Color("dcf8f3"))
-	label("تم محیط: " + Data.WORLD_FA[maxi(0, ["candy", "jungle", "crystal", "moon", "factory"].find(str(Save.data["theme"])))], 95, 806, 530, 70, 30, Color("68456b"))
-	button("تغییر تم", 140, 894, 440, 74, func(): cycle_owned("themes", 1), Color("e6e7ff"))
-	button("رفتن به فروشگاه", 140, 1008, 440, 74, func(): show_screen("shop"), Color("fff2a8"))
+	
+	label(Data.SKIN_NAMES[maxi(0, Data.SKINS.find(Save.data["skin"]))], 110, 435, 500, 55, 30, Color.WHITE)
+	button("اسکین قبلی", 75, 500, 265, 72, func(): cycle_owned("skins", -1), Color("38b6ff"), 27)
+	button("اسکین بعدی", 380, 500, 265, 72, func(): cycle_owned("skins", 1), Color("38b6ff"), 27)
+	
+	label("رد حرکت", 95, 600, 530, 55, 30, Color("cbd8ff"))
+	label(Data.TRAIL_NAMES[maxi(0, Data.TRAILS.find(Save.data["trail"]))], 110, 655, 500, 50, 28, Color("ffe18a"))
+	button("رد قبلی", 75, 715, 265, 72, func(): cycle_owned("trails", -1), Color("b566ff"), 27)
+	button("رد بعدی", 380, 715, 265, 72, func(): cycle_owned("trails", 1), Color("b566ff"), 27)
+	
+	var theme_name: String = Data.WORLD_FA[maxi(0, ["candy", "jungle", "crystal", "moon", "factory"].find(str(Save.data["theme"])))]
+	label("تم منو و پس‌زمینه: " + theme_name, 95, 815, 530, 60, 28, Color("3fe08c"))
+	button("تغییر تم", 140, 885, 440, 74, func(): cycle_owned("themes", 1), Color("3fe08c"), 28)
+	button("فروشگاه آیتم‌ها", 140, 985, 440, 74, func(): show_screen("shop"), Color("ffb84d"), 28)
 
 func cycle_owned(category: String, direction: int) -> void:
 	var owned: Array = Save.data[category]
@@ -527,14 +650,23 @@ func build_achievements() -> void:
 	for i in stats.size():
 		var info: Array = stats[i]
 		var achieved: bool = info[2]
-		label(("★  " if achieved else "☆  ") + str(info[0]), 72, 241 + i * 145, 380, 60, 32, Color("fff8d9") if achieved else Color("765477"))
-		label(str(info[1]), 75, 295 + i * 145, 400, 46, 23, Color("664d72"))
+		var y := 230.0 + i * 140.0
+		
+		var card := make_modal_panel(60, y, 600, 122, Color("ffd45e") if achieved else Color("464d6e"))
+		ui.add_child(card)
+		
+		label(("★  " if achieved else "☆  ") + str(info[0]), 80, y + 15, 340, 48, 29, Color("fff8d9") if achieved else Color("8f95b5"), HORIZONTAL_ALIGNMENT_RIGHT)
+		label(str(info[1]), 80, y + 63, 340, 42, 21, Color("cbd6ff") if achieved else Color("6e7494"), HORIZONTAL_ALIGNMENT_RIGHT)
+		
 		if achieved and not i in Save.data["achievements"]:
 			var id := i
-			button("+%d ✦" % (30 + id * 10), 478, 261 + i * 145, 160, 64, func(): claim_achievement(id), Color("fff0a8"), 25)
+			button("+%d ✦" % (30 + id * 10), 450, y + 26, 180, 68, func(): claim_achievement(id), Color("ffd45e"), 26)
 		elif achieved:
-			label("دریافت شد", 480, 266 + i * 145, 155, 52, 23, Color("5a986f"))
-	label("تکمیل هر مرحله، کریستال و ستاره می‌دهد", 80, 1128, 560, 56, 22, Color("664d72"))
+			label("دریافت شد ✓", 450, y + 36, 180, 50, 24, Color("3fe08c"))
+		else:
+			label("🔒 قفل", 450, y + 36, 180, 50, 24, Color("6e7494"))
+			
+	label("تکمیل هر مرحله، کریستال و ستاره به همراه دارد", 80, 1115, 560, 56, 23, Color("cbd8ff"))
 
 func claim_achievement(id: int) -> void:
 	var reward := Save.claim_achievement(id)
@@ -544,16 +676,27 @@ func claim_achievement(id: int) -> void:
 
 func total_stars() -> int:
 	var count := 0
-	for entry in Save.data["levels"].values(): count += int(entry.get("stars", 0))
+	for entry in Save.data["levels"].values():
+		count += int(entry.get("stars", 0))
 	return count
 
 func build_settings() -> void:
 	title("تنظیمات")
-	button("موسیقی  %s" % ("روشن" if Save.data["music"] else "خاموش"), 105, 290, 510, 88, func(): toggle_setting("music"), Color("e2f7ff"))
-	button("صداها  %s" % ("روشن" if Save.data["sfx"] else "خاموش"), 105, 420, 510, 88, func(): toggle_setting("sfx"), Color("ffe8ee"))
-	button("لرزش  %s" % ("روشن" if Save.data["vibration"] else "خاموش"), 105, 550, 510, 88, func(): toggle_setting("vibration"), Color("fff3ce"))
-	label("بازی کاملاً آفلاین است و پیشرفت روی همین دستگاه ذخیره می‌شود.", 75, 742, 570, 106, 23, Color("654b70"))
-	label("ONE MILLIMETER  ·  v0.1", 100, 1006, 520, 60, 24, Color("735277"))
+	
+	var box := make_modal_panel(70, 230, 580, 480, Color("38b6ff"))
+	ui.add_child(box)
+	
+	build_toggle_row("موسیقی متن", "music", 270)
+	build_toggle_row("جلوه‌های صوتی", "sfx", 390)
+	build_toggle_row("لرزش دستگاه", "vibration", 510)
+	
+	label("بازی کاملاً آفلاین است و تمام پیشرفت روی همین دستگاه ذخیره می‌شود.", 75, 750, 570, 80, 24, Color("cbd8ff"))
+	label("ONE MILLIMETER  ·  v1.0 Dark Fantasy Edition", 100, 1010, 520, 60, 23, Color("74ddff"))
+
+func build_toggle_row(title_text: String, key: String, y: float) -> void:
+	label(title_text, 100, y, 280, 70, 28, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	var active: bool = bool(Save.data.get(key, true))
+	var btn := button("روشن" if active else "خاموش", 410, y + 4, 200, 64, func(): toggle_setting(key), Color("3fe08c") if active else Color("ff4971"), 25)
 
 func toggle_setting(key: String) -> void:
 	Save.data[key] = not Save.data[key]
