@@ -1,20 +1,56 @@
 extends RefCounted
 class_name LevelData
 
-const WORLD_NAMES := ["Sky Islands", "Enchanted Jungle", "Crystal Depths", "Orbital Void", "Clockwork Furnace"]
+const WORLD_NAMES := ["Sky Islands", "Magic Forest", "Crystal Depths", "Cosmic Space", "Mechanical Factory"]
 const WORLD_FA := ["جزایر آسمانی", "جنگل جادویی", "اعماق کریستال", "فضای کیهانی", "کارخانه مکانیکی"]
-const WORLD_COLORS := [Color("ff8fba"), Color("65cf9e"), Color("8a9aff"), Color("a77ff2"), Color("ffbb70")]
-const SKINS := ["classic", "fire", "ice", "galaxy", "gold", "rainbow", "ninja", "robot", "ghost", "crystal", "candy", "star", "electric", "moon", "legendary"]
-const SKIN_NAMES := ["ژلهٔ کلاسیک", "ژلهٔ آتشین", "ژلهٔ یخی", "کهکشانی", "طلایی", "رنگین‌کمانی", "نینجا", "ربات", "شبح", "بلوری", "آب‌نباتی", "ستاره‌ای", "برقی", "مهتابی", "افسانه‌ای"]
-const TRAILS := ["sparkle", "bubble", "fire", "snow", "rainbow", "star", "leaf", "moon", "crystal", "heart"]
-const TRAIL_NAMES := ["درخشش", "حباب", "آتش", "برف", "رنگین‌کمان", "ستاره", "برگ", "مهتاب", "بلور", "قلب"]
+const WORLD_DESCRIPTIONS := [
+	"پرواز بر فراز جزایر معلق با فرودهای میلی‌متری",
+	"گذر از ریتم تله‌های گیاهی و قارچ‌های شب‌تاب",
+	"مسیرخوانی در میان بلورهای درخشان و شکننده",
+	"مهار جاذبه در مدارهای بی‌وزنی و پرتال‌های کیهانی",
+	"نبرد نهایی با چرخ‌دنده‌ها، پیستون‌ها و لیزرهای سرخ"
+]
+const WORLD_SKILLS_FA := [
+	"دقت و فرود باریک",
+	"ریتم و زمان‌بندی",
+	"مسیرخوانی و سرعت",
+	"تسلط بر جاذبه و بی‌وزنی",
+	"مهارت تمام‌عیار"
+]
+const WORLD_COLORS := [
+	Color("38b6ff"),
+	Color("3fe08c"),
+	Color("b566ff"),
+	Color("6a7eff"),
+	Color("ff7a29")
+]
+
+const SKINS := [
+	"classic", "fire", "ice", "galaxy", "gold", 
+	"rainbow", "ninja", "robot", "ghost", "crystal", 
+	"candy", "star", "electric", "moon", "legendary"
+]
+const SKIN_NAMES := [
+	"ژلهٔ کلاسیک", "شعلهٔ آتشین", "یخ قطبی", "سحابی کیهانی", "طلای سلطنتی", 
+	"طیف رنگین‌کمان", "نینجای سایه", "مکانیکال ربات", "شبح سرگردان", "بلور کوارتز", 
+	"ژلهٔ نئونی", "اختر درخشان", "صاعقهٔ الکتریک", "مهتاب کهن", "ژلهٔ افسانه‌ای"
+]
+
+const TRAILS := [
+	"sparkle", "bubble", "fire", "snow", "rainbow", 
+	"star", "leaf", "moon", "crystal", "heart"
+]
+const TRAIL_NAMES := [
+	"جرقهٔ ستاره", "حباب شفاف", "زبانهٔ آتش", "کولاک برف", "رنگین‌کمان", 
+	"غبار کیهانی", "برگ جادویی", "هالهٔ مهتاب", "پرتو بلورین", "تپش قلب"
+]
 
 static func level(number: int) -> Dictionary:
 	return preload("res://levels/route_level.gd").build(number)
 
 static func shop_cost(category: String, index: int) -> int:
 	if category == "skins":
-		return 40 + index * 22
+		return 35 + index * 20
 	if category == "trails":
-		return 25 + index * 18
-	return 200 + index * 80
+		return 20 + index * 15
+	return 150 + index * 70
