@@ -34,7 +34,8 @@ var toast_time := 0.0
 var hud_timer_label: Label
 var hud_crystal_label: Label
 var hud_direction_label: Label
-var hud_hint_label: Label
+var hud_turns_label: Label
+var hud_rotate_btn: Button
 
 func _ready() -> void:
 	set_process(true)
@@ -60,8 +61,8 @@ func _process(delta: float) -> void:
 		if is_instance_valid(hud_direction_label):
 			var direction: Vector2 = stage.player.gravity_direction
 			hud_direction_label.text = "↓" if direction == Vector2.DOWN else ("←" if direction == Vector2.LEFT else ("↑" if direction == Vector2.UP else "→"))
-		if is_instance_valid(hud_hint_label) and (selected_level > 3 or endless_run):
-			hud_hint_label.text = "چرخش  %d" % stage.turns
+		if is_instance_valid(hud_turns_label):
+			hud_turns_label.text = "⟳  %d" % stage.turns
 	queue_redraw()
 
 func _draw() -> void:
@@ -309,31 +310,71 @@ func start_stage() -> void:
 	stage.secret_found.connect(func(): pop_toast("کریستال مخفی +۸"))
 	Save.data["attempts"] += 1
 	Save.save_game()
-	button("Ⅱ", 595, 72, 74, 72, func(): screen = "pause"; build_pause(), Color("fff4d2"), 34)
-	label("مرحله %d" % selected_level if not endless_run else "بی‌پایان · %d" % endless_score, 72, 72, 430, 65, 37, Color.WHITE)
-	create_hud_metrics()
-	button("↻", 40, 1168, 95, 74, func(): stage.restart(), Color("74ddff"), 36)
-	hud_hint_label = label("لمس کن تا جاذبه بچرخد" if selected_level <= 3 and not endless_run else "چرخش  ۰", 147, 1178, 500, 56, 24, Color.WHITE)
+	show_game_hud()
 
 func create_hud_metrics() -> void:
-	hud_direction_label = label("↓", 36, 152, 80, 58, 35, Color("74ddff"))
-	hud_timer_label = label("◷  00:00", 125, 152, 275, 58, 28, Color("fff2dc"))
-	hud_crystal_label = label("✦  0/0", 420, 152, 220, 58, 26, Color("ffde98"))
+	hud_direction_label = label("↓", 36, 152, 70, 58, 35, Color("74ddff"))
+	hud_timer_label = label("◷  00:00", 112, 152, 230, 58, 28, Color("fff2dc"))
+	hud_crystal_label = label("✦  0/0", 350, 152, 170, 58, 26, Color("ffde98"))
+	hud_turns_label = label("⟳  ۰", 526, 152, 158, 58, 26, Color("cbd8ff"))
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		if screen == "game":
-			screen = "pause"
-			build_pause()
-		elif screen == "pause":
-			screen = "game"
-			show_game_hud()
-		elif screen in ["worlds", "shop", "custom", "achievements", "settings"]:
-			show_screen("menu")
-		elif screen == "levels":
-			show_screen("worlds")
-		get_viewport().set_input_as_handled()
-		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_ESCAPE:
+			if screen == "game":
+				screen = "pause"
+				build_pause()
+			elif screen == "pause":
+				screen = "game"
+				show_game_hud()
+			elif screen in ["worlds", "shop", "custom", "achievements", "settings"]:
+				show_screen("menu")
+			elif screen == "levels":
+				show_screen("worlds")
+			elif screen in ["over", "victory"]:
+				show_screen("levels")
+			get_viewport().set_input_as_handled()
+			return
+		
+		if event.keycode == KEY_P:
+			if screen == "game":
+				screen = "pause"
+				build_pause()
+			elif screen == "pause":
+				screen = "game"
+				show_game_hud()
+			get_viewport().set_input_as_handled()
+			return
+
+		if event.keycode == KEY_R:
+			if screen == "game" and stage != null:
+				stage.restart()
+				get_viewport().set_input_as_handled()
+				return
+			elif screen in ["over", "victory"]:
+				retry_after_loss()
+				get_viewport().set_input_as_handled()
+				return
+
+		if event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_W, KEY_A, KEY_S, KEY_D]:
+			if screen == "game" and stage != null:
+				stage.rotate_gravity()
+				get_viewport().set_input_as_handled()
+				return
+			elif screen == "menu":
+				show_screen("worlds")
+				get_viewport().set_input_as_handled()
+				return
+			elif screen == "over":
+				retry_after_loss()
+				get_viewport().set_input_as_handled()
+				return
+			elif screen == "victory":
+				selected_level = mini(60, selected_level + 1)
+				show_screen("game")
+				get_viewport().set_input_as_handled()
+				return
+
 	if screen == "game" and stage != null:
 		if (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
 			stage.rotate_gravity()
@@ -387,12 +428,21 @@ func build_pause() -> void:
 func show_game_hud() -> void:
 	if stage != null:
 		stage.process_mode = Node.PROCESS_MODE_INHERIT
-	for child in ui.get_children(): child.queue_free()
+	for child in ui.get_children():
+		child.queue_free()
 	button("Ⅱ", 595, 72, 74, 72, func(): screen = "pause"; build_pause(), Color("fff4d2"), 34)
 	label("مرحله %d" % selected_level if not endless_run else "بی‌پایان · %d" % endless_score, 72, 72, 430, 65, 37, Color.WHITE)
 	create_hud_metrics()
-	button("↻", 40, 1168, 95, 74, func(): stage.restart(), Color("74ddff"), 36)
-	hud_hint_label = label("لمس کن تا جاذبه بچرخد" if selected_level <= 3 and not endless_run else "چرخش  ۰", 147, 1178, 500, 56, 24, Color.WHITE)
+	
+	var is_pc := not OS.has_feature("mobile")
+	var restart_title := "↻  (R)" if is_pc else "↻"
+	button(restart_title, 36, 1162, 125 if is_pc else 95, 76, func(): stage.restart(), Color("74ddff"), 24 if is_pc else 36)
+	
+	var rotate_title := "↷ چرخش جاذبه  [Space / کلیک]" if is_pc else "↷ چرخش جاذبه  (لمس صفحه)"
+	hud_rotate_btn = button(rotate_title, 173 if is_pc else 145, 1162, 511 if is_pc else 540, 76, func():
+		if stage != null:
+			stage.rotate_gravity()
+	, Color("38b6ff"), 24 if is_pc else 26)
 
 func build_victory() -> void:
 	var result: Dictionary = get_meta("last_result", {})
