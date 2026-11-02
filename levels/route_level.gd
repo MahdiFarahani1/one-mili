@@ -1,5 +1,7 @@
 extends RefCounted
 
+const Chapter = preload("res://levels/chapter_challenge.gd")
+
 # Every row seals the side corridors. The only way to reach the next chamber
 # is to align with its opening and rotate gravity through it.
 static func build(number: int) -> Dictionary:
@@ -29,7 +31,7 @@ static func build(number: int) -> Dictionary:
 		var drift := float(((n * 29 + i * 43) % 61) - 30)
 		var center := clampf((230.0 if leftward else 490.0) + drift, 200.0, 520.0)
 		if n <= 3: center = 200.0 + 45.0 * (n - 1) + 35.0 * i
-		var width := maxf(122.0, 236.0 - tier * 20.0 - float((n + i * 7) % 3) * 7.0)
+		var width := maxf(122.0, 236.0 - tier * 20.0 - float((n + i * 7) % 3) * 7.0 - float(Chapter.profile(world)["gate_penalty"]))
 		if n <= 3: width = 260.0
 		var left_end := center - width * 0.5
 		var right_start := center + width * 0.5
@@ -59,8 +61,9 @@ static func build(number: int) -> Dictionary:
 	if gate_count > 0 and n >= 8:
 		var first: Dictionary = gates[0]
 		bonus = Vector2(550.0 if float(first["center"]) < 360.0 else 170.0, float(first["y"]) + 95.0)
-	var par_time := 10.0 + gate_count * 10.0 + tier * 3.0
-	var par_turns := 2 if n == 1 else 8 + gate_count * 12
+	hazards.append_array(Chapter.challenge_hazards(world, n, gates, "y"))
+	var par_time := (10.0 + gate_count * 10.0 + tier * 3.0) * float(Chapter.profile(world)["par_time_multiplier"])
+	var par_turns := 2 if n == 1 else maxi(2, roundi((8 + gate_count * 12) * float(Chapter.profile(world)["par_turn_multiplier"])))
 	return {"number": n, "world": world, "local": local, "axis": "y", "goal": goal, "start": Vector2(115, 1030), "crystals": crystals, "bonus": bonus, "obstacles": obstacles, "hazards": hazards, "gates": gates, "par_time": par_time, "par_turns": par_turns}
 
 static func build_sideways(n: int, world: int, local: int) -> Dictionary:
@@ -93,6 +96,6 @@ static func build_sideways(n: int, world: int, local: int) -> Dictionary:
 			hazards.append({"kind": "saw", "center": Vector2(x + 37.0, center + side * (width * 0.5 + 23.0)), "radius": 19.0, "phase": i * 0.7})
 	var goal := Vector2(630.0, 315.0 if float(gates[-1]["center"]) > 690.0 else 1050.0)
 	var bonus := Vector2(150.0, 490.0 if float(gates[0]["center"]) > 690.0 else 900.0)
-	var par_time := 12.0 + count * 11.0 + tier * 3.0
-	var par_turns := 10 + count * 12
+	var par_time := (12.0 + count * 11.0 + tier * 3.0) * float(Chapter.profile(world)["par_time_multiplier"])
+	var par_turns := maxi(2, roundi((10 + count * 12) * float(Chapter.profile(world)["par_turn_multiplier"])))
 	return {"number": n, "world": world, "local": local, "axis": "x", "goal": goal, "start": Vector2(115, 1030), "crystals": crystals, "bonus": bonus, "obstacles": obstacles, "hazards": hazards, "gates": gates, "par_time": par_time, "par_turns": par_turns}
