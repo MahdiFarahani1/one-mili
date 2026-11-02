@@ -1,8 +1,8 @@
 extends RefCounted
 class_name LevelData
 
-const WORLD_NAMES := ["Candy Clouds", "Jelly Jungle", "Crystal Dreams", "Moonlight Magic", "Toy Factory"]
-const WORLD_FA := ["ابرهای آب‌نباتی", "جنگل ژله‌ای", "رویای بلورها", "جادوی مهتاب", "کارخانه اسباب‌بازی"]
+const WORLD_NAMES := ["Sky Islands", "Enchanted Jungle", "Crystal Depths", "Orbital Void", "Clockwork Furnace"]
+const WORLD_FA := ["جزایر آسمانی", "جنگل جادویی", "اعماق کریستال", "فضای کیهانی", "کارخانه مکانیکی"]
 const WORLD_COLORS := [Color("ff8fba"), Color("65cf9e"), Color("8a9aff"), Color("a77ff2"), Color("ffbb70")]
 const SKINS := ["classic", "fire", "ice", "galaxy", "gold", "rainbow", "ninja", "robot", "ghost", "crystal", "candy", "star", "electric", "moon", "legendary"]
 const SKIN_NAMES := ["ژلهٔ کلاسیک", "ژلهٔ آتشین", "ژلهٔ یخی", "کهکشانی", "طلایی", "رنگین‌کمانی", "نینجا", "ربات", "شبح", "بلوری", "آب‌نباتی", "ستاره‌ای", "برقی", "مهتابی", "افسانه‌ای"]
