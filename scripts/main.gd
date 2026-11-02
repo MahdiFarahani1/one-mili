@@ -6,6 +6,7 @@ const JellyScript = preload("res://entities/jelly.gd")
 const JELLY_MENU = preload("res://assets/sprites/jelly_classic.png")
 const FONT = preload("res://assets/fonts/Vazirmatn.ttf")
 const BACKGROUNDS = [preload("res://assets/backgrounds/candy.png"), preload("res://assets/backgrounds/jungle.png"), preload("res://assets/backgrounds/crystal.png"), preload("res://assets/backgrounds/moon.png"), preload("res://assets/backgrounds/factory.png")]
+const WORLD_TAGLINES := ["دقت و پرش‌های نفس‌گیر", "ریتم و تله‌های متحرک", "مسیرهای مرگبار و واکنش سریع", "کنترل جاذبه و بی‌وزنی", "آزمون نهایی تمام مهارت‌ها"]
 const LEVEL_POINTS := [Vector2(120, 1030), Vector2(286, 946), Vector2(493, 967), Vector2(590, 839), Vector2(430, 744), Vector2(220, 781), Vector2(112, 647), Vector2(288, 563), Vector2(502, 584), Vector2(593, 460), Vector2(421, 369), Vector2(224, 403)]
 
 var screen := "splash"
@@ -58,8 +59,8 @@ func _draw() -> void:
 	var theme_index := ["candy", "jungle", "crystal", "moon", "factory"].find(str(Save.data.get("theme", "candy")))
 	var world := selected_world if screen in ["worlds", "levels"] else (int(Data.level(selected_level)["world"]) if screen in ["victory", "over"] and not endless_run else maxi(0, theme_index))
 	draw_texture_rect(BACKGROUNDS[world], Rect2(0, 0, 720, 1280), false)
-	draw_rect(Rect2(0, 0, 720, 1280), Color("030719", 0.24))
-	draw_rect(Rect2(0, 0, 720, 145), Color("050a1c", 0.45))
+	draw_rect(Rect2(0, 0, 720, 1280), Color("030719", 0.42))
+	draw_rect(Rect2(0, 0, 720, 145), Color("050a1c", 0.72))
 	draw_rect(Rect2(0, 1090, 720, 190), Color("050a1c", 0.38))
 	for i in 18:
 		var p := Vector2(float((i * 293 + 57) % 720), float((i * 177 + 41) % 1280))
@@ -150,8 +151,8 @@ func button(value: String, x: float, y: float, w: float, h: float, action: Calla
 	b.add_theme_color_override("font_pressed_color", Color("fff5da"))
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		var style := StyleBoxFlat.new()
-		style.bg_color = Color("25304b", 0.95) if state == "hover" else (Color("3a2a36", 0.97) if state == "pressed" else Color("0a142b", 0.88))
-		style.set_corner_radius_all(int(h * 0.43))
+		style.bg_color = color.darkened(0.70) if state == "hover" else (color.darkened(0.82) if state == "pressed" else Color("11142f", 0.95))
+		style.set_corner_radius_all(int(minf(26.0, h * 0.28)))
 		style.border_color = color.darkened(0.18)
 		style.set_border_width_all(2 if state == "disabled" else 3)
 		style.shadow_color = Color(color.r, color.g, color.b, 0.36)
@@ -179,7 +180,7 @@ func build_menu() -> void:
 	label("یک میلی‌متر", 75, 171, 570, 96, 66, Color("fff8ee"))
 	label("O N E   M I L L I M E T E R", 80, 264, 560, 50, 19, Color("d9e7ff"))
 	label("یک لمس، دنیایی دیگر", 80, 543, 560, 50, 25, Color("e8d8ff"))
-	button("▶  بازی کن", 116, 621, 488, 88, func(): show_screen("worlds"), Color("ffba63"), 37)
+	button("▶  شروع ماجراجویی", 116, 621, 488, 88, func(): show_screen("worlds"), Color("b68aff"), 35)
 	button("∞  حالت بی‌پایان", 144, 733, 432, 71, func(): start_endless(), Color("9cb9ff"))
 	button("مراحل", 74, 834, 270, 67, func(): show_screen("worlds"), Color("a8bbf0"))
 	button("فروشگاه", 376, 834, 270, 67, func(): show_screen("shop"), Color("dab0ff"))
@@ -189,28 +190,39 @@ func build_menu() -> void:
 	button("چالش %d/%d" % [int(Save.data["daily"]["progress"]), int(Save.data["daily"]["target"])], 376, 1010, 270, 67, func(): claim_daily(), Color("ffda89"))
 
 func build_worlds() -> void:
-	title("دنیاهای جادویی")
+	title("انتخاب جهان")
+	label("پنج جهان، پنج آزمون متفاوت", 72, 177, 576, 47, 24, Color("cbd6ff"))
 	for i in 5:
 		var index := i
 		var unlocked := Save.unlocked_level() >= i * 12 + 1
-		var sub := "  ·  %s از ۱۲" % persian_number(completed_in_world(i))
-		var text_value: String = (Data.WORLD_FA[i] + sub) if unlocked else (Data.WORLD_FA[i] + "  🔒")
-		var card := button(text_value, 78, 235 + i * 170, 564, 126, func(): select_world(index, unlocked), Data.WORLD_COLORS[i].lightened(0.25), 29)
-		var holder := Control.new()
-		holder.position = Vector2(12, 11)
-		holder.size = Vector2(104, 104)
-		holder.clip_contents = true
-		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.add_child(holder)
+		var y := 246.0 + i * 168.0
+		var card := button("", 56, y, 608, 143, func(): select_world(index, unlocked), Data.WORLD_COLORS[i], 27)
 		var art := TextureRect.new()
 		art.texture = BACKGROUNDS[i]
-		art.position = Vector2.ZERO
-		art.size = Vector2(104, 104)
+		art.position = Vector2(9, 9)
+		art.size = Vector2(188, 125)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.add_child(art)
-		label(Data.WORLD_NAMES[i], 200, 308 + i * 170, 390, 37, 20, Color("bed4ff"))
+		card.add_child(art)
+		var title_text := Label.new()
+		title_text.text = Data.WORLD_FA[i] if unlocked else Data.WORLD_FA[i] + "  🔒"
+		title_text.position = Vector2(208, 17)
+		title_text.size = Vector2(380, 48)
+		title_text.add_theme_font_override("font", FONT)
+		title_text.add_theme_font_size_override("font_size", 31)
+		title_text.add_theme_color_override("font_color", Color.WHITE)
+		title_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(title_text)
+		var detail := Label.new()
+		detail.text = WORLD_TAGLINES[i] + "  ·  %d/12" % completed_in_world(i)
+		detail.position = Vector2(208, 75)
+		detail.size = Vector2(382, 47)
+		detail.add_theme_font_override("font", FONT)
+		detail.add_theme_font_size_override("font_size", 19)
+		detail.add_theme_color_override("font_color", Color("d0d6f5"))
+		detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(detail)
 
 func completed_in_world(world: int) -> int:
 	var count := 0
@@ -227,15 +239,28 @@ func persian_number(value: int) -> String:
 
 func build_levels() -> void:
 	title(Data.WORLD_FA[selected_world], "worlds")
-	label("مسیر جزیره‌های جادویی", 66, 190, 588, 57, 25, Color("ddd7ff"))
+	label(WORLD_TAGLINES[selected_world], 76, 181, 568, 52, 24, Color("d6d9ff"))
 	for i in 12:
 		var number := selected_world * 12 + i + 1
 		var unlocked := number <= Save.unlocked_level()
 		var stars := int(Save.data["levels"].get(str(number), {}).get("stars", 0))
-		var point: Vector2 = LEVEL_POINTS[i]
-		button(str(number) if unlocked else "🔒", point.x - 43, point.y - 43, 86, 86, func(): select_level(number, unlocked), Color("ffca75") if unlocked else Color("8a83b1"), 32)
-		if stars > 0: label("★".repeat(stars), point.x - 57, point.y + 40, 114, 36, 22, Color("ffe18a"))
-	label("★  %d ستاره از ۳۶" % stars_in_world(selected_world), 175, 1130, 370, 52, 24, Color("ffe7ad"))
+		var col := i % 3
+		var row := i / 3
+		var x := 85.0 + float(col) * 192.0
+		var y := 300.0 + float(row) * 176.0
+		var card := button(str(i + 1) if unlocked else "🔒", x, y, 164, 136, func(): select_level(number, unlocked), Data.WORLD_COLORS[selected_world] if unlocked else Color("686b88"), 45)
+		if stars > 0:
+			var star_text := Label.new()
+			star_text.text = "★".repeat(stars)
+			star_text.position = Vector2(8, 96)
+			star_text.size = Vector2(148, 35)
+			star_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			star_text.add_theme_font_override("font", FONT)
+			star_text.add_theme_font_size_override("font_size", 23)
+			star_text.add_theme_color_override("font_color", Color("ffe18a"))
+			star_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			card.add_child(star_text)
+	label("★  %d / ۳۶ ستاره" % stars_in_world(selected_world), 160, 1081, 400, 56, 28, Color("ffe7ad"))
 
 func stars_in_world(world: int) -> int:
 	var count := 0
