@@ -1,6 +1,7 @@
 extends RefCounted
 
 const Chapter = preload("res://levels/chapter_challenge.gd")
+const SkyLevels = preload("res://levels/sky_levels.gd")
 
 # Every chamber tests precision, gravity control, and routing.
 # 60 levels divided into 5 distinct chapters of 12 levels each:
@@ -12,6 +13,10 @@ const Chapter = preload("res://levels/chapter_challenge.gd")
 
 static func build(number: int) -> Dictionary:
 	var n := clampi(number, 1, 60)
+	if n == 1:
+		return build_first_level()
+	if n <= 12:
+		return SkyLevels.build(n)
 	var world := (n - 1) / 12
 	var local := (n - 1) % 12
 	
@@ -37,15 +42,6 @@ static func build(number: int) -> Dictionary:
 	var hazards: Array[Dictionary] = []
 	var gates: Array[Dictionary] = []
 	
-	if n == 1:
-		for stone in [
-			Rect2(230, 420, 150, 28),
-			Rect2(430, 560, 140, 28),
-			Rect2(270, 735, 165, 28),
-			Rect2(440, 880, 125, 28)
-		]:
-			obstacles.append({"rect": stone, "kind": "normal"})
-			
 	for i in rows.size():
 		var y: float = rows[i]
 		var leftward := (n + i + world) % 2 == 0
@@ -174,6 +170,41 @@ static func build(number: int) -> Dictionary:
 		"powerups": powerups,
 		"par_time": par_time,
 		"par_turns": par_turns
+	}
+
+static func build_first_level() -> Dictionary:
+	# Three deliberate reversals teach momentum control from the first run.
+	# Wide gaps leave a fair corridor; the optional crystal asks for a risky detour.
+	var gates: Array[Dictionary] = [
+		{"center": 445.0, "y": 890.0, "width": 220.0},
+		{"center": 260.0, "y": 670.0, "width": 200.0},
+		{"center": 465.0, "y": 450.0, "width": 180.0}
+	]
+	var obstacles: Array[Dictionary] = []
+	for gate in gates:
+		var y: float = gate["y"]
+		var left := float(gate["center"]) - float(gate["width"]) * 0.5
+		var right := float(gate["center"]) + float(gate["width"]) * 0.5
+		obstacles.append({"rect": Rect2(80.0, y, left - 80.0, 28.0), "kind": "normal"})
+		obstacles.append({"rect": Rect2(right, y, 640.0 - right, 28.0), "kind": "normal"})
+	return {
+		"number": 1,
+		"world": 0,
+		"local": 0,
+		"axis": "y",
+		"goal": Vector2(115, 305),
+		"start": Vector2(130, 1040),
+		"crystals": [Vector2(445, 814), Vector2(260, 594), Vector2(465, 374)],
+		"bonus": Vector2(612, 1002),
+		"obstacles": obstacles,
+		"hazards": [
+			{"kind": "saw", "center": Vector2(296, 830), "radius": 15.0, "phase": 0.0},
+			{"kind": "mover", "center": Vector2(390, 606), "radius": 15.0, "phase": 1.1, "amplitude": 30.0}
+		],
+		"gates": gates,
+		"powerups": [{"kind": "shield", "position": Vector2(120, 748)}],
+		"par_time": 48.0,
+		"par_turns": 26
 	}
 
 static func build_sideways(n: int, world: int, local: int) -> Dictionary:

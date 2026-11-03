@@ -17,7 +17,7 @@ func tone(name: String) -> void:
 	if not Save.data.get("sfx", true):
 		return
 	if not cache.has(name):
-		var specs := {"tap": [560.0, 0.08], "turn": [390.0, 0.17], "crystal": [840.0, 0.19], "hurt": [190.0, 0.25], "win": [660.0, 0.52], "buy": [700.0, 0.32], "near": [960.0, 0.12], "spring": [470.0, 0.24]}
+		var specs := {"tap": [560.0, 0.08], "turn": [390.0, 0.17], "crystal": [840.0, 0.19], "hurt": [190.0, 0.25], "win": [660.0, 0.52], "buy": [700.0, 0.32], "near": [960.0, 0.12], "spring": [470.0, 0.24], "mushroom": [530.0, 0.30]}
 		var spec: Array = specs.get(name, [500.0, 0.1])
 		cache[name] = make_wave(float(spec[0]), float(spec[1]), false, 0)
 	player.stream = cache[name]

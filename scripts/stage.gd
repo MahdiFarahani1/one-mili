@@ -10,10 +10,12 @@ signal powerup_obtained(kind: String)
 const JellyScript = preload("res://entities/jelly.gd")
 const Data = preload("res://levels/level_data.gd")
 const PlatformScene = preload("res://entities/platform_visual.tscn")
+const MushroomScript = preload("res://entities/reactive_mushroom.gd")
 const SAW = preload("res://assets/sprites/saw.png")
 const PORTAL = preload("res://assets/sprites/portal.png")
 const CRYSTAL = preload("res://assets/sprites/crystal.png")
 const EMITTER = preload("res://assets/sprites/laser_emitter.png")
+const LEVEL_ONE_SKY = preload("res://assets/backgrounds/level_01_sky.png")
 const BACKGROUNDS = [
 	preload("res://assets/backgrounds/candy.png"),
 	preload("res://assets/backgrounds/jungle.png"),
@@ -47,6 +49,7 @@ var last_failure := ""
 var turn_flash := 0.0
 var shake_intensity := 0.0
 var effects: Array[Dictionary] = []
+var record_failures := true
 
 # Special gameplay power-up states
 var has_shield := false
@@ -59,7 +62,9 @@ func _init(level_details: Dictionary = {}) -> void:
 func _ready() -> void:
 	process_physics_priority = 10
 	world = int(details.get("world", 0))
-	for r in [Rect2(36, 226, 648, 24), Rect2(36, 1130, 648, 24), Rect2(36, 250, 24, 880), Rect2(660, 250, 24, 880)]:
+	var first_level := int(details.get("number", 0)) == 1
+	var side_width := 44.0 if world == 0 else 24.0
+	for r in [Rect2(36, 226, 648, 24), Rect2(36, 1130, 648, 24), Rect2(36, 250, side_width, 880), Rect2(684.0 - side_width, 250, side_width, 880)]:
 		add_wall(r, "boundary")
 	for i in details.get("obstacles", []).size():
 		var o: Dictionary = details["obstacles"][i]
@@ -76,6 +81,11 @@ func _ready() -> void:
 		crystals.append({"position": p, "taken": false})
 	for pu in details.get("powerups", []):
 		powerups.append({"kind": pu["kind"], "position": pu["position"], "taken": false})
+	if int(details.get("number", 0)) == 1:
+		for spot in [Vector2(220, 890), Vector2(565, 670), Vector2(265, 450)]:
+			var mushroom: StaticBody2D = MushroomScript.new()
+			mushroom.position = spot
+			add_child(mushroom)
 	
 	player = JellyScript.new()
 	add_child(player)
@@ -111,12 +121,18 @@ func add_wall(rect: Rect2, kind: String = "normal") -> StaticBody2D:
 	body.add_child(collision)
 	var visual: PlatformVisual = PlatformScene.instantiate()
 	body.add_child(visual)
-	visual.configure(world, rect.size, kind)
+	visual.configure(world, rect.size, kind, world == 0)
 	add_child(body)
 	walls.append(body)
 	return body
 
 func on_surface_hit(kind: String, body: StaticBody2D) -> void:
+	if kind == "mushroom":
+		if body.has_method("react_to_hit") and body.react_to_hit(player.position, player.velocity.length()):
+			Sound.tone("mushroom")
+			burst(body.position + Vector2(0, -72), Color("71e6f5"), 12, 100.0)
+			trigger_shake(3.0)
+		return
 	var visual := body.get_node_or_null("PlatformVisual")
 	if visual != null and visual.has_method("on_spring_bounce"):
 		visual.on_spring_bounce()
@@ -210,7 +226,7 @@ func _physics_process(delta: float) -> void:
 		var target_cam := player.position + lead
 		target_cam.x = clampf(target_cam.x, 260.0, 460.0)
 		target_cam.y = clampf(target_cam.y, 440.0, 840.0)
-		camera.position = camera.position.lerp(target_cam, delta * 4.8)
+		camera.position = camera.position.lerp(target_cam, clampf(delta * 4.8, 0.0, 1.0))
 		
 	for index in range(effects.size() - 1, -1, -1):
 		effects[index]["p"] += effects[index]["v"] * effective_delta
@@ -279,8 +295,17 @@ func _physics_process(delta: float) -> void:
 	for hazard in details.get("hazards", []):
 		var p: Vector2 = hazard["center"]
 		var kind: String = hazard["kind"]
+		if kind == "wind":
+			var wind_rect := Rect2(p - Vector2(hazard["size"]) * 0.5, hazard["size"])
+			if wind_rect.has_point(player.position):
+				player.velocity += Vector2(hazard["force"]) * effective_delta
+			continue
 		if kind == "mover":
 			p.x += sin(anim * 1.55 + float(hazard["phase"])) * float(hazard.get("amplitude", 100.0))
+		if kind == "storm":
+			if fmod(anim + float(hazard["phase"]), 3.4) < 0.95 and horizontal_beam_hit(movement_start, player.position, hazard["start"], hazard["end"]):
+				fail(kind)
+			continue
 		if kind == "laser":
 			var beam_start: Vector2 = hazard.get("start", Vector2(170, p.y))
 			var beam_end: Vector2 = hazard.get("end", Vector2(550, p.y))
@@ -392,8 +417,9 @@ func fail(reason: String = "") -> void:
 	player.expression = "sad"
 	trigger_shake(12.0)
 	burst(player.position, Color("ff4267"), 22, 140.0)
-	Save.data["deaths"] += 1
-	Save.save_game()
+	if record_failures:
+		Save.data["deaths"] += 1
+		Save.save_game()
 	Sound.tone("hurt")
 	if OS.has_feature("mobile") and Save.data.get("vibration", true):
 		Input.vibrate_handheld(40)
@@ -412,20 +438,26 @@ func _draw() -> void:
 	# 1. Deep Parallax Scenery
 	var cam_pos := camera.position if camera != null else Vector2(360, 690)
 	var deep_offset := (cam_pos - Vector2(360, 690)) * -0.015
-	draw_texture_rect(BACKGROUNDS[world], Rect2(Vector2(-24, -24) + deep_offset, Vector2(768, 1328)), false)
-	draw_rect(Rect2(0, 0, 720, 1280), Color("020614", 0.12))
+	var first_level := world == 0
+	draw_texture_rect(LEVEL_ONE_SKY if first_level else BACKGROUNDS[world], Rect2(Vector2(-24, -24) + deep_offset, Vector2(768, 1328)), false)
+	if not first_level:
+		draw_rect(Rect2(0, 0, 720, 1280), Color("020614", 0.12))
 
 	# 2. Midground Living Parallax Elements
 	var mid_offset := (cam_pos - Vector2(360, 690)) * -0.045
 	match world:
 		0:
-			# Sky & Clouds: Soft drifting silhouette cloud banks
-			for c in 3:
-				var cx := fmod(anim * 14.0 + float(c) * 260.0, 920.0) - 100.0 + mid_offset.x
-				var cy := 380.0 + float(c) * 230.0 + mid_offset.y
-				draw_circle(Vector2(cx, cy), 58.0, Color("ffffff", 0.08))
-				draw_circle(Vector2(cx + 42, cy - 12), 48.0, Color("ffffff", 0.08))
-				draw_circle(Vector2(cx - 38, cy + 6), 44.0, Color("ffffff", 0.08))
+			# Fine, tapered cloud wisps keep the flight corridor readable.
+			for c in 4:
+				var cx := fmod(anim * (8.0 + float(c)) + float(c) * 241.0, 900.0) - 90.0 + mid_offset.x
+				var cy := 365.0 + float(c) * 185.0 + mid_offset.y
+				var points := PackedVector2Array([
+					Vector2(cx - 80, cy + 8), Vector2(cx - 35, cy - 4),
+					Vector2(cx + 18, cy - 9), Vector2(cx + 75, cy + 3),
+					Vector2(cx + 27, cy + 8), Vector2(cx - 26, cy + 11)
+				])
+				draw_colored_polygon(points, Color("bad8f4", 0.08))
+				draw_line(Vector2(cx - 35, cy - 4), Vector2(cx + 18, cy - 9), Color("d7edff", 0.10), 1.5, true)
 		1:
 			# Magic Forest: Distant giant mushroom canopies & drifting mist layers
 			var mist_x := sin(anim * 0.4) * 35.0 + mid_offset.x
@@ -502,8 +534,14 @@ func _draw() -> void:
 				var ember_pulse := 0.6 + 0.4 * sin(anim * 5.0 + float(i))
 				draw_circle(Vector2(x, y), 3.2, Color("ff9944", 0.8 * ember_pulse))
 				draw_circle(Vector2(x, y), 7.0, Color("ff3b30", 0.25 * ember_pulse))
+	if world == 0:
+		for prop in details.get("sky_props", []):
+			draw_sky_prop(prop)
 				
-	draw_rect(FIELD, Color("030b1f", 0.10), true)
+	if not first_level:
+		draw_rect(FIELD, Color("030b1f", 0.10), true)
+	if int(details.get("number", 0)) == 1:
+		draw_first_level_walls()
 	
 	# Hazards rendering
 	for hazard in details.get("hazards", []):
@@ -513,6 +551,11 @@ func _draw() -> void:
 			p.x += sin(anim * 1.55 + float(hazard["phase"])) * float(hazard.get("amplitude", 100.0))
 			
 		match kind:
+			"wind":
+				draw_wind_field(p, Vector2(hazard["size"]), Vector2(hazard["force"]))
+			"storm":
+				var phase := fmod(anim + float(hazard["phase"]), 3.4)
+				draw_storm_beam(hazard["start"], hazard["end"], phase < 0.95, phase > 2.65)
 			"laser":
 				var beam_phase := fmod(anim + float(hazard["phase"]), 3.0)
 				var active := beam_phase < 1.0
@@ -611,6 +654,18 @@ func _draw() -> void:
 		draw_line(point + Vector2(-3, 0), point + Vector2(3, 0), tint, 2, true)
 		draw_line(point + Vector2(0, -3), point + Vector2(0, 3), tint, 2, true)
 
+func draw_first_level_walls() -> void:
+	# Keep the physics boundary readable without covering the floating-island art.
+	for x in [80.0, 640.0]:
+		draw_line(Vector2(x, 250), Vector2(x, 1130), Color("39dfff", 0.14), 10.0, true)
+		draw_line(Vector2(x, 250), Vector2(x, 1130), Color("d4ffff", 0.54), 1.5, true)
+		for row in 8:
+			var y := 304.0 + float(row) * 108.0
+			draw_circle(Vector2(x, y), 3.0, Color("fff2c0", 0.72))
+	for y in [250.0, 1130.0]:
+		draw_line(Vector2(80, y), Vector2(640, y), Color("39dfff", 0.12), 9.0, true)
+		draw_line(Vector2(80, y), Vector2(640, y), Color("d4ffff", 0.45), 1.5, true)
+
 func draw_themed_hazard(p: Vector2, radius: float) -> void:
 	match world:
 		0:
@@ -696,3 +751,53 @@ func draw_laser(start: Vector2, finish: Vector2, active: bool, warning: bool = f
 		draw_circle(finish, 6.0, Color("ff9933", 0.6 * warn_pulse))
 	else:
 		draw_line(start, finish, Color("ff5577", 0.12), 2, true)
+
+func draw_wind_field(center: Vector2, size: Vector2, force: Vector2) -> void:
+	var area := Rect2(center - size * 0.5, size)
+	draw_rect(area, Color("71eaff", 0.045))
+	draw_rect(area, Color("b8f5ff", 0.28), false, 1.5, true)
+	var direction := 1.0 if force.x >= 0.0 else -1.0
+	for row in 3:
+		var y := area.position.y + 19.0 + float(row) * 27.0
+		var drift := fmod(anim * 32.0 + float(row) * 36.0, size.x - 36.0)
+		var x := area.position.x + (18.0 + drift if direction > 0.0 else size.x - 18.0 - drift)
+		var glow := Color("86efff", 0.48)
+		draw_line(Vector2(x - direction * 13.0, y), Vector2(x + direction * 7.0, y), glow, 2.0, true)
+		draw_line(Vector2(x + direction * 7.0, y), Vector2(x, y - 6.0), glow, 2.0, true)
+		draw_line(Vector2(x + direction * 7.0, y), Vector2(x, y + 6.0), glow, 2.0, true)
+
+func draw_storm_beam(start: Vector2, finish: Vector2, active: bool, warning: bool) -> void:
+	for endpoint in [start, finish]:
+		draw_circle(endpoint, 14.0, Color("74dfff", 0.25))
+		draw_arc(endpoint, 11.0, 0, TAU, 20, Color("d6faff", 0.75), 2.0, true)
+	if active:
+		draw_line(start, finish, Color("5e9dff", 0.30), 22.0, true)
+		var points := PackedVector2Array([start])
+		for i in range(1, 8):
+			var t := float(i) / 8.0
+			points.append(start.lerp(finish, t) + Vector2(0, sin(anim * 31.0 + float(i) * 4.2) * 6.0))
+		points.append(finish)
+		draw_polyline(points, Color("8fefff"), 5.0, true)
+		draw_polyline(points, Color.WHITE, 1.6, true)
+	elif warning:
+		var pulse := 0.35 + 0.35 * sin(anim * 17.0)
+		draw_line(start, finish, Color("f9e992", pulse), 2.5, true)
+	else:
+		draw_line(start, finish, Color("98d9f4", 0.16), 1.5, true)
+
+func draw_sky_prop(prop: Dictionary) -> void:
+	var p: Vector2 = prop["position"]
+	var phase: float = float(prop.get("phase", 0.0))
+	if prop["kind"] == "kite":
+		p += Vector2(sin(anim * 1.2 + phase) * 6.0, cos(anim * 1.5 + phase) * 4.0)
+		draw_line(p + Vector2(0, 15), p + Vector2(7, 53), Color("fff2d2", 0.40), 1.4, true)
+		draw_colored_polygon(PackedVector2Array([p + Vector2(0, -22), p + Vector2(17, 0), p + Vector2(0, 20), p + Vector2(-17, 0)]), Color("7bdfff", 0.48))
+		draw_line(p + Vector2(0, -22), p + Vector2(0, 20), Color("ffffff", 0.7), 1.5, true)
+		draw_line(p + Vector2(-17, 0), p + Vector2(17, 0), Color("f8d985", 0.75), 1.5, true)
+	elif prop["kind"] == "wind_vane":
+		draw_line(p + Vector2(0, 33), p + Vector2(0, -2), Color("7dd8ee", 0.55), 2.5, true)
+		draw_circle(p + Vector2(0, -7), 7.0, Color("ffdf83", 0.8))
+		for blade in 4:
+			var angle := anim * 1.7 + float(blade) * TAU / 4.0
+			var tip := p + Vector2(0, -7) + Vector2(cos(angle), sin(angle)) * 22.0
+			draw_line(p + Vector2(0, -7), tip, Color("d5f9ff", 0.75), 3.0, true)

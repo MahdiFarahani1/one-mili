@@ -1,7 +1,12 @@
-res://scripts/stage.gd
-res://scripts/main.gd
+res://levels/chapter_challenge.gd
 res://levels/level_data.gd
+res://levels/route_level.gd
+res://scripts/main.gd
+res://scripts/stage.gd
+res://entities/platform_visual.gd
 res://entities/jelly.gd
-res://tests/process_sprites.gd
-res://tests/routes.gd
-res://tests/validate_all.gd
+res://systems/sound.gd
+res://entities/reactive_mushroom.gd
+res://tests/level_one_playthrough.gd
+res://tests/capture_neon_ui.gd
+res://tests/neon_ui_flow.gd

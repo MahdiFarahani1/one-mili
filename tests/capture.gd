@@ -22,9 +22,17 @@ func run() -> void:
 	scene.show_screen("shop")
 	await process_frame
 	root.get_viewport().get_texture().get_image().save_png("res://tests/shop_capture.png")
+	scene.current_shop_tab = "trails"
+	scene.show_screen("shop")
+	await process_frame
+	root.get_viewport().get_texture().get_image().save_png("res://tests/trails_capture.png")
+	scene.current_shop_tab = "skins"
 	scene.show_screen("settings")
 	await process_frame
 	root.get_viewport().get_texture().get_image().save_png("res://tests/settings_capture.png")
+	scene.show_screen("achievements")
+	await process_frame
+	root.get_viewport().get_texture().get_image().save_png("res://tests/achievements_capture.png")
 	scene.show_screen("game")
 	await process_frame
 	await process_frame
@@ -37,6 +45,9 @@ func run() -> void:
 	await process_frame
 	scene.set_meta("last_result", {"stars": 3, "seconds": 4.8, "turns": 14, "reward": 45})
 	scene.show_screen("victory")
-	await process_frame
+	await create_timer(0.7).timeout
 	root.get_viewport().get_texture().get_image().save_png("res://tests/victory_capture.png")
+	scene.show_screen("over")
+	await process_frame
+	root.get_viewport().get_texture().get_image().save_png("res://tests/over_capture.png")
 	quit()

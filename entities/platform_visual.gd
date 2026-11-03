@@ -8,14 +8,17 @@ const TEXTURES = [
 	preload("res://assets/sprites/platform_moon.png"),
 	preload("res://assets/sprites/platform_factory.png")
 ]
+const LEVEL_ONE_TEXTURE = preload("res://assets/sprites/platform_level_01.png")
 
 var deco_node: Node2D
 var kind_name := "normal"
+var level_one_style := false
 
-func configure(world: int, body_size: Vector2, kind: String = "normal") -> void:
+func configure(world: int, body_size: Vector2, kind: String = "normal", is_level_one: bool = false) -> void:
 	var w := clampi(world, 0, TEXTURES.size() - 1)
 	kind_name = kind
-	texture = TEXTURES[w]
+	level_one_style = is_level_one
+	texture = LEVEL_ONE_TEXTURE if is_level_one else TEXTURES[w]
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	
 	var is_boundary := (kind == "boundary")
@@ -28,24 +31,36 @@ func configure(world: int, body_size: Vector2, kind: String = "normal") -> void:
 	else:
 		visible = true
 		var image_size := texture.get_size()
-		var desired_scale := clampf(span / 480.0, 0.22, 0.38)
-		var source_width := minf(image_size.x, span / desired_scale)
-		var source_start := (image_size.x - source_width) * 0.5
-		region_enabled = true
-		region_rect = Rect2(source_start, 0, source_width, image_size.y)
+		if level_one_style:
+			# The generated sprite has transparent breathing room around its painted slab.
+			# Keep that room in the render so the cyan glow does not get clipped.
+			region_enabled = false
+			var sprite_width := image_size.x * 0.90
+			var fitted_scale := span / sprite_width
+			scale = Vector2(fitted_scale, fitted_scale)
+			rotation = -PI * 0.5 if vertical else 0.0
+			var surface_y := image_size.y * 0.29
+			var offset_y := -depth * 0.5 + (image_size.y * 0.5 - surface_y) * fitted_scale
+			position = Vector2(offset_y, 0) if vertical else Vector2(0, offset_y)
+		else:
+			var desired_scale := clampf(span / 480.0, 0.22, 0.38)
+			var source_width := minf(image_size.x, span / desired_scale)
+			var source_start := (image_size.x - source_width) * 0.5
+			region_enabled = true
+			region_rect = Rect2(source_start, 0, source_width, image_size.y)
 		
 		# Proportional uniform scale preserves all carved arches, stalactites, lanterns, and vines
-		var actual_scale_x := span / source_width
-		var actual_scale_y := actual_scale_x * 0.92
-		scale = Vector2(actual_scale_x, actual_scale_y)
-		rotation = -PI * 0.5 if vertical else 0.0
+			var actual_scale_x := span / source_width
+			var actual_scale_y := actual_scale_x * 0.92
+			scale = Vector2(actual_scale_x, actual_scale_y)
+			rotation = -PI * 0.5 if vertical else 0.0
 		
 		# Align top flat surface of stone slab (at Y ≈ 32 in texture) exactly with top collision edge
-		var pos_y := -depth * 0.5 + (image_size.y * 0.5 - 32.0) * actual_scale_y
-		if vertical:
-			position = Vector2(pos_y, 0)
-		else:
-			position = Vector2(0, pos_y)
+			var pos_y := -depth * 0.5 + (image_size.y * 0.5 - 32.0) * actual_scale_y
+			if vertical:
+				position = Vector2(pos_y, 0)
+			else:
+				position = Vector2(0, pos_y)
 	
 	match kind:
 		"ice": modulate = Color("bceeff")
@@ -61,7 +76,7 @@ func configure(world: int, body_size: Vector2, kind: String = "normal") -> void:
 			deco_node = PlatformDeco.new()
 			parent_body.add_child(deco_node)
 		if deco_node is PlatformDeco:
-			(deco_node as PlatformDeco).setup(w, body_size, kind)
+			(deco_node as PlatformDeco).setup(w, body_size, kind, level_one_style)
 
 func on_spring_bounce() -> void:
 	if deco_node is PlatformDeco:
@@ -74,11 +89,13 @@ class PlatformDeco extends Node2D:
 	var anim := 0.0
 	var spring_bounce := 0.0
 	var stage_node: Node2D = null
+	var level_one_style := false
 
-	func setup(p_world: int, p_size: Vector2, p_kind: String) -> void:
+	func setup(p_world: int, p_size: Vector2, p_kind: String, p_level_one_style: bool = false) -> void:
 		world = p_world
 		size = p_size
 		kind = p_kind
+		level_one_style = p_level_one_style
 		set_process(true)
 		queue_redraw()
 
@@ -129,6 +146,11 @@ class PlatformDeco extends Node2D:
 
 	# --- WORLD 0: SKY & CLOUDS ---
 	func draw_sky_decor(half: Vector2) -> void:
+		if level_one_style:
+			var top_y := -half.y
+			draw_line(Vector2(-half.x, top_y), Vector2(half.x, top_y), Color("3deaff", 0.22), 12.0, true)
+			draw_line(Vector2(-half.x, top_y), Vector2(half.x, top_y), Color("c9ffff", 0.94), 2.5, true)
+			return
 		# Golden gilded filigree top rim
 		draw_line(Vector2(-half.x, -half.y), Vector2(half.x, -half.y), Color("ffd55e", 0.95), 3.0, true)
 		draw_line(Vector2(-half.x, -half.y + 2.0), Vector2(half.x, -half.y + 2.0), Color("74ddff", 0.5), 1.5, true)
