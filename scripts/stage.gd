@@ -5,6 +5,7 @@ signal won(seconds: float, turns: int, collected: int)
 signal lost
 signal crystal_collected(combo: int)
 signal secret_found
+signal powerup_obtained(kind: String)
 
 const JellyScript = preload("res://entities/jelly.gd")
 const Data = preload("res://levels/level_data.gd")
@@ -30,6 +31,7 @@ var obstacle_bodies: Array[StaticBody2D] = []
 var moving_platform: StaticBody2D
 var gate_body: StaticBody2D
 var crystals: Array[Dictionary] = []
+var powerups: Array[Dictionary] = []
 var seconds := 0.0
 var turns := 0
 var combo := 0
@@ -45,6 +47,11 @@ var last_failure := ""
 var turn_flash := 0.0
 var shake_intensity := 0.0
 var effects: Array[Dictionary] = []
+
+# Special gameplay power-up states
+var has_shield := false
+var slowmo_timer := 0.0
+var invulnerable_timer := 0.0
 
 func _init(level_details: Dictionary = {}) -> void:
 	details = level_details
@@ -67,6 +74,9 @@ func _ready() -> void:
 			gate_body = add_wall(Rect2(305, 979, 110, 22), "gate")
 	for p in details.get("crystals", []):
 		crystals.append({"position": p, "taken": false})
+	for pu in details.get("powerups", []):
+		powerups.append({"kind": pu["kind"], "position": pu["position"], "taken": false})
+	
 	player = JellyScript.new()
 	add_child(player)
 	player.skin = str(Save.data.get("skin", "classic"))
@@ -74,6 +84,7 @@ func _ready() -> void:
 	player.reset(details.get("start", Vector2(115, 1030)))
 	previous_player_position = player.position
 	player.surface_hit.connect(on_surface_hit)
+	
 	camera = Camera2D.new()
 	camera.zoom = Vector2(1.18, 1.18)
 	camera.limit_left = 0
@@ -108,13 +119,16 @@ func add_wall(rect: Rect2, kind: String = "normal") -> StaticBody2D:
 func on_surface_hit(kind: String, body: StaticBody2D) -> void:
 	if kind == "spring":
 		Sound.tone("spring")
-		trigger_shake(3.0)
+		trigger_shake(3.2)
+		burst(player.position, Color("ffd84d"), 14, 90.0)
+		if world == 1: # Magic forest giant mushroom spore burst
+			burst(player.position, Color("3fe08c"), 18, 110.0)
 	elif kind == "fragile" and not body.get_meta("broken", false):
 		body.set_meta("broken", true)
 		body.set_deferred("collision_layer", 0)
 		body.get_node("PlatformVisual").visible = false
-		trigger_shake(4.0)
-		burst(body.position, Color("b5e7ff"), 12, 80.0)
+		trigger_shake(4.5)
+		burst(body.position, Color("b5e7ff"), 16, 95.0)
 		var index := int(body.get_meta("obstacle_index", -1))
 		if index >= 0:
 			details["obstacles"][index]["broken"] = true
@@ -147,9 +161,14 @@ func restart() -> void:
 	shake_intensity = 0.0
 	near_cooldown = 0.0
 	portal_cooldown = 0.0
+	has_shield = false
+	slowmo_timer = 0.0
+	invulnerable_timer = 0.0
 	effects.clear()
 	for c in crystals:
 		c["taken"] = false
+	for pu in powerups:
+		pu["taken"] = false
 	for i in obstacle_bodies.size():
 		obstacle_bodies[i].set_meta("broken", false)
 		obstacle_bodies[i].set_deferred("collision_layer", 2)
@@ -158,13 +177,15 @@ func restart() -> void:
 	player.reset(details.get("start", Vector2(115, 1030)))
 	previous_player_position = player.position
 	camera.position = player.position
-	camera.reset_smoothing()
-	Save.data["attempts"] += 1
-	Save.save_game()
-	queue_redraw()
 
 func _physics_process(delta: float) -> void:
-	anim += delta
+	invulnerable_timer = maxf(0.0, invulnerable_timer - delta)
+	var effective_delta := delta
+	if slowmo_timer > 0.0:
+		slowmo_timer = maxf(0.0, slowmo_timer - delta)
+		effective_delta = delta * 0.45
+
+	anim += effective_delta
 	turn_flash = maxf(0.0, turn_flash - delta)
 	
 	if camera != null:
@@ -176,7 +197,7 @@ func _physics_process(delta: float) -> void:
 		camera.position = player.position
 		
 	for index in range(effects.size() - 1, -1, -1):
-		effects[index]["p"] += effects[index]["v"] * delta
+		effects[index]["p"] += effects[index]["v"] * effective_delta
 		effects[index]["life"] -= delta
 		if effects[index]["life"] <= 0.0:
 			effects.remove_at(index)
@@ -195,6 +216,7 @@ func _physics_process(delta: float) -> void:
 		
 	seconds += delta
 	
+	# Bonus secret crystal
 	var bonus_position: Vector2 = details.get("bonus", Vector2.ZERO)
 	if bonus_position != Vector2.ZERO and not bonus_collected and segment_distance(movement_start, player.position, bonus_position) < 38:
 		bonus_collected = true
@@ -202,6 +224,24 @@ func _physics_process(delta: float) -> void:
 		trigger_shake(3.5)
 		burst(bonus_position, Color("ffbbf9"), 16, 95.0)
 		secret_found.emit()
+
+	# Power-up items (Shield & Slow-Mo)
+	for pu in powerups:
+		if not pu.get("taken", false) and segment_distance(movement_start, player.position, pu["position"]) < 38.0:
+			pu["taken"] = true
+			var p_kind: String = pu["kind"]
+			if p_kind == "shield":
+				has_shield = true
+				Sound.tone("crystal")
+				trigger_shake(3.2)
+				burst(pu["position"], Color("38b6ff"), 22, 110.0)
+				powerup_obtained.emit("shield")
+			elif p_kind == "slowmo":
+				slowmo_timer = 4.0
+				Sound.tone("spring")
+				trigger_shake(2.8)
+				burst(pu["position"], Color("ffd84d"), 22, 110.0)
+				powerup_obtained.emit("slowmo")
 		
 	player.gravity_scale = 1.0
 	if moving_platform != null:
@@ -257,7 +297,7 @@ func _physics_process(delta: float) -> void:
 			continue
 		if kind == "magnet":
 			if player.position.distance_to(p) < 100.0:
-				player.velocity += (p - player.position).normalized() * 180.0 * delta
+				player.velocity += (p - player.position).normalized() * 180.0 * effective_delta
 			continue
 			
 		var distance := segment_distance(movement_start, player.position, p)
@@ -319,6 +359,17 @@ func vertical_beam_hit(start: Vector2, finish: Vector2, beam_start: Vector2, bea
 func fail(reason: String = "") -> void:
 	if ended:
 		return
+	if invulnerable_timer > 0.0:
+		return
+	if has_shield:
+		has_shield = false
+		invulnerable_timer = 1.3
+		trigger_shake(8.5)
+		burst(player.position, Color("38b6ff"), 28, 140.0)
+		Sound.tone("spring")
+		player.velocity = -player.velocity.normalized() * 260.0
+		return
+
 	last_failure = reason
 	ended = true
 	player.alive = false
@@ -346,6 +397,11 @@ func _draw() -> void:
 	var offset := Vector2((player.position.x - 360.0) * -0.014, (player.position.y - 690.0) * -0.008)
 	draw_texture_rect(BACKGROUNDS[world], Rect2(Vector2(-12, -12) + offset, Vector2(744, 1304)), false)
 	draw_rect(Rect2(0, 0, 720, 1280), Color("020614", 0.16))
+	
+	# Slow-motion visual field border
+	if slowmo_timer > 0.0:
+		var pulse := 0.08 + 0.05 * sin(anim * 8.0)
+		draw_rect(Rect2(0, 0, 720, 1280), Color("38b6ff", pulse), false, 10.0)
 	
 	# Ambient atmospheric motes
 	for i in 16:
@@ -413,9 +469,30 @@ func _draw() -> void:
 				texture_at(PORTAL, p, Vector2(48, 48), Color("83e5ff", 0.62), -anim * 0.25)
 			"saw", "mover":
 				var radius: float = hazard["radius"]
-				draw_circle(p, radius + 18, Color(base.r, base.g, base.b, 0.18))
-				texture_at(SAW, p, Vector2(radius * 2.7, radius * 2.7), Color.WHITE, anim * 2.8)
+				draw_themed_hazard(p, radius)
 				
+	# Powerups rendering (Shield & Slow-Mo)
+	for pu in powerups:
+		if not pu.get("taken", false):
+			var pu_pos: Vector2 = pu["position"] + Vector2(0, sin(anim * 3.5 + pu["position"].x) * 4.5)
+			if pu["kind"] == "shield":
+				draw_arc(pu_pos, 22.0 + sin(anim * 4.0) * 3.0, 0, TAU, 32, Color("38b6ff", 0.65), 2.5, true)
+				draw_circle(pu_pos, 16.0, Color("143b66", 0.85))
+				var crest := PackedVector2Array([
+					pu_pos + Vector2(0, -9), pu_pos + Vector2(8, -5),
+					pu_pos + Vector2(6, 6), pu_pos + Vector2(0, 10),
+					pu_pos + Vector2(-6, 6), pu_pos + Vector2(-8, -5)
+				])
+				draw_colored_polygon(crest, Color("74ddff"))
+			elif pu["kind"] == "slowmo":
+				draw_arc(pu_pos, 22.0 + sin(anim * 4.0) * 3.0, 0, TAU, 32, Color("ffd84d", 0.65), 2.5, true)
+				draw_circle(pu_pos, 16.0, Color("4a390e", 0.85))
+				draw_colored_polygon(PackedVector2Array([
+					pu_pos + Vector2(-7, -8), pu_pos + Vector2(7, -8),
+					pu_pos + Vector2(1, 0), pu_pos + Vector2(7, 8),
+					pu_pos + Vector2(-7, 8), pu_pos + Vector2(-1, 0)
+				]), Color("ffe380"))
+
 	# Crystals rendering
 	if collected < crystals.size():
 		var c: Dictionary = crystals[collected]
@@ -434,6 +511,20 @@ func _draw() -> void:
 	var goal_size := 84.0 + sin(anim * 3.0) * 4.0
 	texture_at(PORTAL, goal, Vector2(goal_size, goal_size), Color.WHITE if unlocked else Color("8391b1", 0.68), -anim * 0.22)
 	
+	# Active player energy shield
+	if has_shield:
+		var hex_points := PackedVector2Array()
+		for h in 6:
+			var a := anim * 2.2 + float(h) * (TAU / 6.0)
+			hex_points.append(player.position + Vector2(cos(a), sin(a)) * 36.0)
+		draw_polyline(hex_points + PackedVector2Array([hex_points[0]]), Color("38b6ff", 0.9), 3.0, true)
+		draw_circle(player.position, 34.0, Color("38b6ff", 0.12))
+		for s in 3:
+			var sa := anim * -3.5 + float(s) * (TAU / 3.0)
+			draw_circle(player.position + Vector2(cos(sa), sin(sa)) * 36.0, 3.5, Color("d0f4ff"))
+	elif invulnerable_timer > 0.0:
+		draw_arc(player.position, 37.0, 0, TAU, 24, Color("ffffff", 0.7 * (sin(anim * 32.0) * 0.5 + 0.5)), 3.0, true)
+
 	if near_cooldown > 0.0:
 		draw_arc(player.position, 35 + (1.0 - near_cooldown) * 12.0, 0, TAU, 48, Color("fff3b7", near_cooldown * 0.6), 3, true)
 	if turn_flash > 0.0:
@@ -445,6 +536,58 @@ func _draw() -> void:
 		tint.a = clampf(float(effect["life"]) * 1.8, 0.0, 0.85)
 		draw_line(point + Vector2(-3, 0), point + Vector2(3, 0), tint, 2, true)
 		draw_line(point + Vector2(0, -3), point + Vector2(0, 3), tint, 2, true)
+
+func draw_themed_hazard(p: Vector2, radius: float) -> void:
+	match world:
+		0:
+			# Sky & Clouds: Sun-Gear Razor Saw
+			var r := radius * 1.35
+			draw_circle(p, r + 14, Color("ffd55e", 0.18))
+			for ray in 8:
+				var a := anim * 3.5 + float(ray) * (TAU / 8.0)
+				var pt := p + Vector2(cos(a), sin(a)) * (r + 7.0)
+				draw_line(p, pt, Color("ffd55e", 0.8), 3.0, true)
+			texture_at(SAW, p, Vector2(radius * 2.7, radius * 2.7), Color("fff4ba"), anim * 2.8)
+			draw_circle(p, 8.0, Color("ffb84d"))
+		1:
+			# Magic Forest: Carnivorous Bramble / Spiked Thorn Maw
+			var r := radius * 1.35
+			draw_circle(p, r + 12, Color("3fe08c", 0.16))
+			for thorn in 6:
+				var a := anim * 2.2 + float(thorn) * (TAU / 6.0)
+				var tip := p + Vector2(cos(a), sin(a)) * (r + 8.0)
+				draw_line(p, tip, Color("9affc4", 0.9), 3.5, true)
+			texture_at(SAW, p, Vector2(radius * 2.6, radius * 2.6), Color("b8ffe2"), anim * 2.2)
+			draw_circle(p, 9.0, Color("802d99"))
+		2:
+			# Crystal World: Radiant Crystal Star Shard
+			var r := radius * 1.4
+			draw_circle(p, r + 16, Color("b566ff", 0.20))
+			for shard in 6:
+				var a := anim * 3.0 + float(shard) * (TAU / 6.0)
+				var tip := p + Vector2(cos(a), sin(a)) * (r + 10.0)
+				var left := p + Vector2(cos(a - 0.25), sin(a - 0.25)) * (r * 0.6)
+				var right := p + Vector2(cos(a + 0.25), sin(a + 0.25)) * (r * 0.6)
+				draw_colored_polygon(PackedVector2Array([left, tip, right]), Color("c47aff", 0.85))
+			texture_at(SAW, p, Vector2(radius * 2.5, radius * 2.5), Color("e9c4ff"), -anim * 2.5)
+			draw_circle(p, 8.0, Color("ffffff"))
+		3:
+			# Cosmic Space: Dark Matter Vortex / Asteroid Maw
+			var r := radius * 1.4
+			draw_circle(p, r + 16, Color("6a7eff", 0.22))
+			draw_arc(p, r + 6.0 + sin(anim * 5.0) * 4.0, 0, TAU, 36, Color("74ddff", 0.7), 2.5, true)
+			texture_at(SAW, p, Vector2(radius * 2.7, radius * 2.7), Color("9bb1ff"), anim * 1.8)
+			draw_circle(p, 10.0, Color("0b0922"))
+		4:
+			# Mechanical Factory: Industrial Steel Gear with Molten Core
+			var r := radius * 1.35
+			draw_circle(p, r + 14, Color("ff7a29", 0.22))
+			for tooth in 8:
+				var a := anim * 4.0 + float(tooth) * (TAU / 8.0)
+				var tip := p + Vector2(cos(a), sin(a)) * (r + 9.0)
+				draw_line(p, tip, Color("ffd84d", 0.9), 4.0, true)
+			texture_at(SAW, p, Vector2(radius * 2.7, radius * 2.7), Color("ffaa77"), anim * 3.5)
+			draw_circle(p, 9.0, Color("ff3b30"))
 
 func texture_at(source: Texture2D, center: Vector2, size: Vector2, tint: Color = Color.WHITE, angle: float = 0.0) -> void:
 	draw_set_transform(center, angle)

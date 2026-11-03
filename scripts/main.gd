@@ -13,11 +13,11 @@ const BACKGROUNDS = [
 	preload("res://assets/backgrounds/factory.png")
 ]
 const WORLD_TAGLINES := [
-	"پرواز بر فراز جزایر معلق با فرودهای میلی‌متری",
-	"گذر از ریتم تله‌های گیاهی و قارچ‌های شب‌تاب",
-	"مسیرخوانی در میان بلورهای درخشان و شکننده",
-	"مهار جاذبه در مدارهای بی‌وزنی و پرتال‌های کیهانی",
-	"نبرد نهایی با چرخ‌دنده‌ها، پیستون‌ها و لیزرهای سرخ"
+	"پرش‌های دقیق · لبه‌های جهت‌دار · سکوهای متحرک",
+	"سکوهای ناپایدار · گیاهان تله‌دار · مسیرهای مخفی",
+	"مسیرهای چندمسیره · سوئیچ مسیر · چالش سرعت",
+	"گرانش متغیر · پرتل‌های جابه‌جایی · فیزیک مدار",
+	"لیزرهای هوشمند · زمان‌بندی دقیق · پیستون‌های متحرک"
 ]
 
 var screen := "splash"
@@ -35,7 +35,9 @@ var hud_timer_label: Label
 var hud_crystal_label: Label
 var hud_direction_label: Label
 var hud_turns_label: Label
+var hud_powerup_label: Label
 var hud_rotate_btn: Button
+var current_shop_tab := "skins"
 
 func _ready() -> void:
 	set_process(true)
@@ -55,7 +57,12 @@ func _process(delta: float) -> void:
 	toast_time = maxf(0.0, toast_time - delta)
 	if screen == "game" and stage != null:
 		if is_instance_valid(hud_timer_label):
-			hud_timer_label.text = "◷  %02d:%02d" % [int(stage.seconds) / 60, int(stage.seconds) % 60]
+			if stage.slowmo_timer > 0.0:
+				hud_timer_label.text = "⏱  %04.1fs" % stage.slowmo_timer
+				hud_timer_label.add_theme_color_override("font_color", Color("74ddff"))
+			else:
+				hud_timer_label.text = "◷  %02d:%02d" % [int(stage.seconds) / 60, int(stage.seconds) % 60]
+				hud_timer_label.add_theme_color_override("font_color", Color("fff2dc"))
 		if is_instance_valid(hud_crystal_label):
 			hud_crystal_label.text = "✦  %d/%d" % [stage.collected, stage.crystals.size()]
 		if is_instance_valid(hud_direction_label):
@@ -63,6 +70,8 @@ func _process(delta: float) -> void:
 			hud_direction_label.text = "↓" if direction == Vector2.DOWN else ("←" if direction == Vector2.LEFT else ("↑" if direction == Vector2.UP else "→"))
 		if is_instance_valid(hud_turns_label):
 			hud_turns_label.text = "⟳  %d" % stage.turns
+		if is_instance_valid(hud_powerup_label):
+			hud_powerup_label.text = "🛡 سپر" if stage.has_shield else ""
 	queue_redraw()
 
 func _draw() -> void:
@@ -203,7 +212,7 @@ func build_menu() -> void:
 
 func build_worlds() -> void:
 	title("انتخاب جهان")
-	label("پنج جهان، پنج آزمون متفاوت", 72, 177, 576, 47, 24, Color("cbd6ff"))
+	label("۵ تم حرفه‌ای با ایده‌های مرحله، چالش و حس متفاوت", 72, 177, 576, 47, 24, Color("cbd6ff"))
 	for i in 5:
 		var index := i
 		var unlocked := Save.unlocked_level() >= i * 12 + 1
@@ -227,13 +236,14 @@ func build_worlds() -> void:
 		holder.add_child(art)
 		
 		var title_text := Label.new()
-		title_text.text = (Data.WORLD_FA[i] + "  ·  %d/12" % completed_in_world(i)) if unlocked else (Data.WORLD_FA[i] + "  🔒")
+		var stars_str := "★ %d/۳۶" % stars_in_world(i) if unlocked else "🔒"
+		title_text.text = Data.WORLD_FA[i] + "  ·  " + stars_str
 		title_text.position = Vector2(20, 16)
 		title_text.size = Vector2(410, 48)
 		title_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		title_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		title_text.add_theme_font_override("font", FONT)
-		title_text.add_theme_font_size_override("font_size", 30)
+		title_text.add_theme_font_size_override("font_size", 29)
 		title_text.add_theme_color_override("font_color", Color.WHITE if unlocked else Color("9fa4be"))
 		title_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_child(title_text)
@@ -258,8 +268,8 @@ func completed_in_world(world: int) -> int:
 	return count
 
 func build_levels() -> void:
-	title(Data.WORLD_FA[selected_world], "worlds")
-	label(WORLD_TAGLINES[selected_world], 76, 181, 568, 52, 24, Color("d6d9ff"))
+	title("مراحل - " + Data.WORLD_FA[selected_world], "worlds")
+	label(WORLD_TAGLINES[selected_world], 76, 175, 568, 52, 23, Color("d6d9ff"))
 	for i in 12:
 		var number := selected_world * 12 + i + 1
 		var unlocked := number <= Save.unlocked_level()
@@ -267,20 +277,28 @@ func build_levels() -> void:
 		var col := i % 3
 		var row := i / 3
 		var x := 85.0 + float(col) * 192.0
-		var y := 280.0 + float(row) * 180.0
-		var card := button(str(i + 1) if unlocked else "🔒", x, y, 164, 140, func(): select_level(number, unlocked), Data.WORLD_COLORS[selected_world] if unlocked else Color("595c73"), 44)
-		if stars > 0:
-			var star_text := Label.new()
-			star_text.text = "★".repeat(stars)
-			star_text.position = Vector2(8, 98)
-			star_text.size = Vector2(148, 35)
-			star_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			star_text.add_theme_font_override("font", FONT)
-			star_text.add_theme_font_size_override("font_size", 23)
-			star_text.add_theme_color_override("font_color", Color("ffe18a"))
-			star_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			card.add_child(star_text)
-	label("★  %d / ۳۶ ستاره جهان" % stars_in_world(selected_world), 160, 1081, 400, 56, 28, Color("ffe7ad"))
+		var y := 260.0 + float(row) * 190.0
+		var card := button(str(i + 1) if unlocked else "🔒", x, y, 164, 155, func(): select_level(number, unlocked), Data.WORLD_COLORS[selected_world] if unlocked else Color("474c69"), 46)
+		
+		# 3-star indicator directly under each level number
+		var stars_holder := HBoxContainer.new()
+		stars_holder.position = Vector2(10, 102)
+		stars_holder.size = Vector2(144, 38)
+		stars_holder.alignment = BoxContainer.ALIGNMENT_CENTER
+		stars_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(stars_holder)
+		
+		for s in 3:
+			var s_lbl := Label.new()
+			s_lbl.text = "★"
+			s_lbl.add_theme_font_override("font", FONT)
+			s_lbl.add_theme_font_size_override("font_size", 25)
+			var has_star := unlocked and s < stars
+			s_lbl.add_theme_color_override("font_color", Color("ffd45e") if has_star else Color("444c6e", 0.55))
+			s_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			stars_holder.add_child(s_lbl)
+			
+	label("★  %d / ۳۶ ستاره جهان" % stars_in_world(selected_world), 160, 1075, 400, 56, 28, Color("ffe7ad"))
 
 func stars_in_world(world: int) -> int:
 	var count := 0
@@ -308,15 +326,22 @@ func start_stage() -> void:
 	stage.lost.connect(on_stage_lost)
 	stage.crystal_collected.connect(func(c: int): if c >= 2: pop_toast("کمبو ×%d" % c))
 	stage.secret_found.connect(func(): pop_toast("کریستال مخفی +۸"))
+	stage.powerup_obtained.connect(func(kind: String):
+		if kind == "shield":
+			pop_toast("🛡 سپر انرژی فعال شد!")
+		elif kind == "slowmo":
+			pop_toast("⏱ زمان آهسته شد!")
+	)
 	Save.data["attempts"] += 1
 	Save.save_game()
 	show_game_hud()
 
 func create_hud_metrics() -> void:
-	hud_direction_label = label("↓", 36, 152, 70, 58, 35, Color("74ddff"))
-	hud_timer_label = label("◷  00:00", 112, 152, 230, 58, 28, Color("fff2dc"))
-	hud_crystal_label = label("✦  0/0", 350, 152, 170, 58, 26, Color("ffde98"))
-	hud_turns_label = label("⟳  ۰", 526, 152, 158, 58, 26, Color("cbd8ff"))
+	hud_direction_label = label("↓", 36, 152, 60, 58, 35, Color("74ddff"))
+	hud_timer_label = label("◷  00:00", 98, 152, 220, 58, 28, Color("fff2dc"))
+	hud_crystal_label = label("✦  0/0", 325, 152, 160, 58, 26, Color("ffde98"))
+	hud_turns_label = label("⟳  ۰", 488, 152, 95, 58, 26, Color("cbd8ff"))
+	hud_powerup_label = label("", 588, 152, 95, 58, 26, Color("38b6ff"))
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -536,34 +561,41 @@ func claim_daily() -> void:
 	Sound.tone("crystal" if reward > 0 else "tap")
 	if reward > 0: show_screen("menu")
 
-func build_shop() -> void:
-	title("فروشگاه کریستالی")
-	label("آیتم‌های اختصاصی با کریستال‌های به‌دست‌آمده", 70, 180, 580, 50, 24, Color("cbd8ff"))
+func build_shop(category: String = "") -> void:
+	if category != "":
+		current_shop_tab = category
+	title("فروشگاه", "menu")
+	button("✦ %d" % int(Save.data["crystals"]), 490, 42, 195, 60, func(): {}, Color("ffb84d"), 25)
 	
-	button("اسکین‌های ژله", 80, 255, 265, 75, func(): build_shop_list("skins"), Color("38b6ff"), 27)
-	button("رد حرکت نئونی", 375, 255, 265, 75, func(): build_shop_list("trails"), Color("b566ff"), 27)
-	button("تم‌های محیطی", 80, 350, 560, 75, func(): build_shop_list("themes"), Color("3fe08c"), 27)
-	
-	var info_box := make_modal_panel(75, 480, 570, 320, Color("4f78ff"))
-	ui.add_child(info_box)
-	label("سیستم کاملاً آفلاین و عادلانه", 90, 510, 540, 55, 29, Color("ffe18a"))
-	label("تمام اسکین‌ها، رد‌های حرکتی و تم‌ها", 90, 575, 540, 45, 23, Color.WHITE)
-	label("فقط با بازی‌کردن و مهارت خودت باز می‌شوند.", 90, 620, 540, 45, 23, Color("cbd8ff"))
-	label("★ اسکین کلاسیک و رد درخشش از آغاز فعال‌اند", 90, 695, 540, 50, 23, Color("9fffe8"))
+	# Top 3 tabs directly matching reference poster: [اسکین] [افکت] [تم]
+	var tabs := [
+		["skins", "اسکین", Color("38b6ff")],
+		["trails", "افکت", Color("b566ff")],
+		["themes", "تم", Color("3fe08c")]
+	]
+	for idx in tabs.size():
+		var t: Array = tabs[idx]
+		var tab_id: String = t[0]
+		var tab_name: String = t[1]
+		var tab_color: Color = t[2]
+		var is_active := current_shop_tab == tab_id
+		var btn := button(tab_name, 60 + idx * 205, 135, 190, 64, func(): show_shop_tab(tab_id), tab_color if is_active else Color("323a54"), 26)
+		if is_active:
+			btn.add_theme_color_override("font_color", Color.WHITE)
+			
+	build_shop_list(current_shop_tab)
+
+func show_shop_tab(tab_id: String) -> void:
+	current_shop_tab = tab_id
+	show_screen("shop")
 
 func build_shop_list(category: String) -> void:
-	for child in ui.get_children(): child.queue_free()
-	var heading := "اسکین‌های ژله" if category == "skins" else ("رد حرکت نئونی" if category == "trails" else "تم‌های محیطی")
-	button("‹", 34, 43, 70, 70, func(): show_screen("shop"), Color("74ddff"), 39)
-	label(heading, 130, 52, 460, 60, 40)
-	button("✦ %d" % int(Save.data["crystals"]), 505, 130, 165, 55, func(): {}, Color("ffb84d"), 23)
-	
 	var names: Array = Data.SKIN_NAMES if category == "skins" else (Data.TRAIL_NAMES if category == "trails" else Data.WORLD_FA)
 	var ids: Array = Data.SKINS if category == "skins" else (Data.TRAILS if category == "trails" else ["candy", "jungle", "crystal", "moon", "factory"])
 	
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(45, 210)
-	scroll.size = Vector2(630, 930)
+	scroll.position = Vector2(45, 215)
+	scroll.size = Vector2(630, 980)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	ui.add_child(scroll)
 	
@@ -639,11 +671,10 @@ func build_shop_list(category: String) -> void:
 		bs.border_color = Color("3fe08c") if owned else Color("ffd45e")
 		bs.set_border_width_all(2)
 		buy.add_theme_stylebox_override("normal", bs)
-		buy.add_theme_stylebox_override("disabled", bs)
 		buy.pressed.connect(func():
 			if Save.purchase(category, item, cost):
 				Sound.tone("buy")
-				build_shop_list(category)
+				show_screen("shop")
 			else:
 				pop_toast("کریستال کافی نیست")
 		)

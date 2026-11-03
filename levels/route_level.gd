@@ -147,6 +147,15 @@ static func build(number: int) -> Dictionary:
 	if n == 60:
 		hazards.append({"kind": "platform", "center": Vector2(360, 920)})
 		
+	var powerups: Array[Dictionary] = []
+	if gate_count >= 2 and n >= 7:
+		if n % 2 == 0:
+			var pu_x := 550.0 if float(gates[0]["center"]) < 360.0 else 170.0
+			powerups.append({"kind": "shield", "position": Vector2(pu_x, float(gates[0]["y"]) + 65.0)})
+		else:
+			var pu_x := 180.0 if float(gates[-1]["center"]) > 360.0 else 540.0
+			powerups.append({"kind": "slowmo", "position": Vector2(pu_x, float(gates[-1]["y"]) + 65.0)})
+
 	var par_time := (10.0 + gate_count * 10.0 + tier * 3.0) * float(Chapter.profile(world)["par_time_multiplier"])
 	var par_turns := 2 if n == 1 else maxi(2, roundi((8 + gate_count * 12) * float(Chapter.profile(world)["par_turn_multiplier"])))
 	
@@ -162,6 +171,7 @@ static func build(number: int) -> Dictionary:
 		"obstacles": obstacles,
 		"hazards": hazards,
 		"gates": gates,
+		"powerups": powerups,
 		"par_time": par_time,
 		"par_turns": par_turns
 	}
@@ -211,6 +221,11 @@ static func build_sideways(n: int, world: int, local: int) -> Dictionary:
 	
 	hazards.append_array(Chapter.challenge_hazards(world, n, gates, "x"))
 	
+	var powerups: Array[Dictionary] = []
+	if count >= 2 and n >= 12:
+		var pu_y := 450.0 if float(gates[0]["center"]) > 690.0 else 920.0
+		powerups.append({"kind": "shield" if n % 2 == 0 else "slowmo", "position": Vector2(columns[0] + 55.0, pu_y)})
+
 	var par_time := (12.0 + count * 11.0 + tier * 3.0) * float(Chapter.profile(world)["par_time_multiplier"])
 	var par_turns := maxi(2, roundi((10 + count * 12) * float(Chapter.profile(world)["par_turn_multiplier"])))
 	
@@ -226,6 +241,7 @@ static func build_sideways(n: int, world: int, local: int) -> Dictionary:
 		"obstacles": obstacles,
 		"hazards": hazards,
 		"gates": gates,
+		"powerups": powerups,
 		"par_time": par_time,
 		"par_turns": par_turns
 	}
