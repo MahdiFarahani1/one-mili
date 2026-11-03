@@ -1,0 +1,48 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+WARNING: Loaded resource as image file, this will not work on export: 'res://assets/sprites/raw/platform_candy.png'. Instead, import the image file as an Image resource and load it normally as a resource.
+   at: load (core/io/image.cpp:2770)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/process_sprites.gd:8)
+platform_candy (2172, 724) => (1200, 222)
+WARNING: Loaded resource as image file, this will not work on export: 'res://assets/sprites/raw/platform_jungle.png'. Instead, import the image file as an Image resource and load it normally as a resource.
+   at: load (core/io/image.cpp:2770)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/process_sprites.gd:8)
+platform_jungle (2172, 724) => (1200, 308)
+WARNING: Loaded resource as image file, this will not work on export: 'res://assets/sprites/raw/platform_crystal.png'. Instead, import the image file as an Image resource and load it normally as a resource.
+   at: load (core/io/image.cpp:2770)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/process_sprites.gd:8)
+platform_crystal (2172, 724) => (1200, 256)
+WARNING: Loaded resource as image file, this will not work on export: 'res://assets/sprites/raw/platform_moon.png'. Instead, import the image file as an Image resource and load it normally as a resource.
+   at: load (core/io/image.cpp:2770)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/process_sprites.gd:8)
+platform_moon (2123, 741) => (1200, 223)
+WARNING: Loaded resource as image file, this will not work on export: 'res://assets/sprites/raw/platform_factory.png'. Instead, import the image file as an Image resource and load it normally as a resource.
+   at: load (core/io/image.cpp:2770)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/process_sprites.gd:8)
+platform_factory (2172, 724) => (1200, 249)
+WARNING: Loaded resource as image file, this will not work on export: 'res://assets/sprites/raw/saw.png'. Instead, import the image file as an Image resource and load it normally as a resource.
+   at: load (core/io/image.cpp:2770)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/process_sprites.gd:8)
+saw (1263, 1245) => (512, 495)
+WARNING: Loaded resource as image file, this will not work on export: 'res://assets/sprites/raw/portal.png'. Instead, import the image file as an Image resource and load it normally as a resource.
+   at: load (core/io/image.cpp:2770)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/process_sprites.gd:8)
+portal (1254, 1254) => (512, 512)
+WARNING: Loaded resource as image file, this will not work on export: 'res://assets/sprites/raw/crystal.png'. Instead, import the image file as an Image resource and load it normally as a resource.
+   at: load (core/io/image.cpp:2770)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/process_sprites.gd:8)
+crystal (1024, 1536) => (288, 512)
+WARNING: Loaded resource as image file, this will not work on export: 'res://assets/sprites/raw/laser_emitter.png'. Instead, import the image file as an Image resource and load it normally as a resource.
+   at: load (core/io/image.cpp:2770)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/process_sprites.gd:8)
+laser_emitter (1536, 1024) => (512, 313)
+jelly_body (1274, 1234) => (512, 504)

@@ -1,0 +1,17 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+SOLVER 28 won=true crystals=3 frame=617 offset=0.0
+SOLVER 32 won=true crystals=3 frame=717 offset=0.0
+SOLVER 36 won=false crystals=2 frame=397 offset=0.0
+SOLVER 36 won=false crystals=2 frame=397 offset=0.6
+SOLVER 36 won=false crystals=2 frame=550 offset=1.4
+SOLVER 36 won=false crystals=2 frame=408 offset=2.2
+SOLVER 36 won=false crystals=2 frame=397 offset=2.6
+SOLVER 48 won=false crystals=2 frame=576 offset=0.0
+SOLVER 48 won=false crystals=2 frame=504 offset=0.6
+SOLVER 48 won=false crystals=2 frame=478 offset=1.4
+SOLVER 48 won=false crystals=2 frame=478 offset=2.2
+SOLVER 48 won=true crystals=4 frame=911 offset=2.6
+SOLVER 51 won=false crystals=2 frame=451 offset=0.0
+SOLVER 51 won=true crystals=4 frame=907 offset=0.6
+SOLVER TARGETED: [36]

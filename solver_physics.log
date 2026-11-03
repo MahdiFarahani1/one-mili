@@ -1,0 +1,8 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+SOLVER 2 won=true lost=false crystals=1 frame=346 p=(566.3781, 314.0668)
+SOLVER 5 won=true lost=false crystals=1 frame=434 p=(155.3645, 316.531)
+SOLVER 13 won=true lost=false crystals=2 frame=507 p=(157.4308, 288.7946)
+SOLVER 25 won=true lost=false crystals=3 frame=751 p=(150.932, 274.8156)
+SOLVER 37 won=true lost=false crystals=3 frame=675 p=(571.1735, 274.0665)
+SOLVER 60 won=false lost=true crystals=2 frame=361 p=(433.5797, 666.82)

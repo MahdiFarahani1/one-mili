@@ -1,0 +1,11 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+TAP ROUTE 2 won=true collected=1 turns=20 seconds=4.8 p=(569.6388, 323.7019) failure=
+TAP ROUTE 6 won=true collected=2 turns=30 seconds=7.2 p=(117.2349, 342.2888) failure=
+TAP ROUTE 12 won=true collected=2 turns=35 seconds=9.3 p=(635.9332, 357.4248) failure=
+TAP ROUTE 13 won=true collected=2 turns=38 seconds=8.3 p=(118.0174, 340.9923) failure=
+TAP ROUTE 24 won=true collected=3 turns=36 seconds=9.9 p=(635.9332, 355.811) failure=
+TAP ROUTE 25 won=true collected=3 turns=43 seconds=10.3 p=(136.8506, 336.2046) failure=
+TAP ROUTE 37 won=true collected=3 turns=45 seconds=9.9 p=(568.7891, 279.4433) failure=
+TAP ROUTE 44 won=true collected=4 turns=41 seconds=12.1 p=(631.2584, 1007.735) failure=
+TAP ROUTE 60 won=true collected=4 turns=48 seconds=13.9 p=(635.9332, 355.6375) failure=

@@ -1,0 +1,7 @@
+res://scripts/stage.gd
+res://scripts/main.gd
+res://levels/level_data.gd
+res://entities/jelly.gd
+res://tests/process_sprites.gd
+res://tests/routes.gd
+res://tests/validate_all.gd

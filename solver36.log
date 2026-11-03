@@ -1,0 +1,8 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+SOLVER 36 won=false crystals=2 frame=397 offset=0.0 p=(457.0035, 558.9276) hazard=laser
+SOLVER 36 won=false crystals=2 frame=397 offset=0.6 p=(457.0035, 558.9276) hazard=laser
+SOLVER 36 won=false crystals=2 frame=550 offset=1.4 p=(217.1925, 557.5419) hazard=laser
+SOLVER 36 won=false crystals=2 frame=408 offset=2.2 p=(429.1298, 540.1382) hazard=laser
+SOLVER 36 won=false crystals=2 frame=397 offset=2.6 p=(457.0035, 558.9276) hazard=laser
+SOLVER TARGETED: [36]
