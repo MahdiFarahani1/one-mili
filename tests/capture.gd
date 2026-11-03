@@ -35,7 +35,7 @@ func run() -> void:
 	scene.show_screen("game")
 	await process_frame
 	await process_frame
-	root.get_viewport().get_texture().get_image().save_png("res://tests/late_capture.png")
+	scene.set_meta("last_result", {"stars": 3, "seconds": 4.8, "turns": 14, "reward": 45})
 	scene.show_screen("victory")
 	await process_frame
 	root.get_viewport().get_texture().get_image().save_png("res://tests/victory_capture.png")
