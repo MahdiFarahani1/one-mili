@@ -86,13 +86,13 @@ func _ready() -> void:
 	player.surface_hit.connect(on_surface_hit)
 	
 	camera = Camera2D.new()
-	camera.zoom = Vector2(1.18, 1.18)
-	camera.limit_left = 0
-	camera.limit_top = 0
-	camera.limit_right = 720
-	camera.limit_bottom = 1280
+	camera.zoom = Vector2(1.28, 1.28)
+	camera.limit_left = 10
+	camera.limit_top = 180
+	camera.limit_right = 710
+	camera.limit_bottom = 1200
 	camera.position_smoothing_enabled = true
-	camera.position_smoothing_speed = 3.8
+	camera.position_smoothing_speed = 5.2
 	add_child(camera)
 	camera.position = player.position
 	camera.make_current()
@@ -117,10 +117,22 @@ func add_wall(rect: Rect2, kind: String = "normal") -> StaticBody2D:
 	return body
 
 func on_surface_hit(kind: String, body: StaticBody2D) -> void:
+	var visual := body.get_node_or_null("PlatformVisual")
+	if visual != null and visual.has_method("on_spring_bounce"):
+		visual.on_spring_bounce()
+
+	if player.velocity.length() > 190.0:
+		match world:
+			0: burst(player.position, Color("ffd55e"), 7, 65.0) # Sky golden dust
+			1: burst(player.position, Color("3fe08c"), 9, 70.0) # Forest spores
+			2: burst(player.position, Color("c47aff"), 8, 75.0) # Crystal shards
+			3: burst(player.position, Color("74ddff"), 7, 70.0) # Cosmic stardust
+			4: burst(player.position, Color("ff9944"), 9, 85.0) # Factory sparks
+
 	if kind == "spring":
 		Sound.tone("spring")
 		trigger_shake(3.2)
-		burst(player.position, Color("ffd84d"), 14, 90.0)
+		burst(player.position, Color("ffd84d"), 16, 95.0)
 		if world == 1: # Magic forest giant mushroom spore burst
 			burst(player.position, Color("3fe08c"), 18, 110.0)
 	elif kind == "fragile" and not body.get_meta("broken", false):
@@ -194,7 +206,11 @@ func _physics_process(delta: float) -> void:
 			shake_intensity = move_toward(shake_intensity, 0.0, delta * 25.0)
 		else:
 			camera.offset = Vector2.ZERO
-		camera.position = player.position
+		var lead := player.velocity * 0.08 + player.gravity_direction * 28.0
+		var target_cam := player.position + lead
+		target_cam.x = clampf(target_cam.x, 260.0, 460.0)
+		target_cam.y = clampf(target_cam.y, 440.0, 840.0)
+		camera.position = camera.position.lerp(target_cam, delta * 4.8)
 		
 	for index in range(effects.size() - 1, -1, -1):
 		effects[index]["p"] += effects[index]["v"] * effective_delta
@@ -393,41 +409,99 @@ func _draw() -> void:
 	]
 	var base: Color = accents[world]
 	
-	# Parallax Scenery
-	var offset := Vector2((player.position.x - 360.0) * -0.014, (player.position.y - 690.0) * -0.008)
-	draw_texture_rect(BACKGROUNDS[world], Rect2(Vector2(-12, -12) + offset, Vector2(744, 1304)), false)
-	draw_rect(Rect2(0, 0, 720, 1280), Color("020614", 0.16))
-	
+	# 1. Deep Parallax Scenery
+	var cam_pos := camera.position if camera != null else Vector2(360, 690)
+	var deep_offset := (cam_pos - Vector2(360, 690)) * -0.015
+	draw_texture_rect(BACKGROUNDS[world], Rect2(Vector2(-24, -24) + deep_offset, Vector2(768, 1328)), false)
+	draw_rect(Rect2(0, 0, 720, 1280), Color("020614", 0.12))
+
+	# 2. Midground Living Parallax Elements
+	var mid_offset := (cam_pos - Vector2(360, 690)) * -0.045
+	match world:
+		0:
+			# Sky & Clouds: Soft drifting silhouette cloud banks
+			for c in 3:
+				var cx := fmod(anim * 14.0 + float(c) * 260.0, 920.0) - 100.0 + mid_offset.x
+				var cy := 380.0 + float(c) * 230.0 + mid_offset.y
+				draw_circle(Vector2(cx, cy), 58.0, Color("ffffff", 0.08))
+				draw_circle(Vector2(cx + 42, cy - 12), 48.0, Color("ffffff", 0.08))
+				draw_circle(Vector2(cx - 38, cy + 6), 44.0, Color("ffffff", 0.08))
+		1:
+			# Magic Forest: Distant giant mushroom canopies & drifting mist layers
+			var mist_x := sin(anim * 0.4) * 35.0 + mid_offset.x
+			draw_rect(Rect2(Vector2(40 + mist_x, 460 + mid_offset.y), Vector2(640, 190)), Color("3fe08c", 0.05), true)
+			draw_rect(Rect2(Vector2(40 - mist_x, 740 + mid_offset.y), Vector2(640, 170)), Color("40e8d0", 0.04), true)
+			for m in 2:
+				var mx := 170.0 + float(m) * 380.0 + mid_offset.x
+				var my := 590.0 + float(m) * 200.0 + mid_offset.y
+				draw_circle(Vector2(mx, my), 85.0, Color("0b2b1a", 0.28))
+		2:
+			# Crystal World: Distant giant glowing crystal pillars
+			for cr in 3:
+				var cx := 140.0 + float(cr) * 220.0 + mid_offset.x
+				var cy := 640.0 + mid_offset.y
+				var c_poly := PackedVector2Array([
+					Vector2(cx - 25, cy + 190), Vector2(cx, cy - 170), Vector2(cx + 25, cy + 190)
+				])
+				var c_alpha := 0.07 + 0.03 * sin(anim * 2.0 + float(cr))
+				draw_colored_polygon(c_poly, Color("c47aff", c_alpha))
+		3:
+			# Cosmic Space: Distant planetary ring arc & celestial dust band
+			var ring_center := Vector2(360, 640) + mid_offset
+			draw_arc(ring_center, 250.0, anim * 0.04, anim * 0.04 + 1.8, 36, Color("74ddff", 0.07), 20.0)
+			draw_arc(ring_center, 280.0, anim * -0.03, anim * -0.03 + 1.4, 36, Color("b566ff", 0.06), 16.0)
+		4:
+			# Mechanical Factory: Giant slowly rotating silhouette cogs in the background
+			for g in 2:
+				var gx := 190.0 + float(g) * 340.0 + mid_offset.x
+				var gy := 510.0 + float(g) * 270.0 + mid_offset.y
+				var gr := 115.0
+				draw_arc(Vector2(gx, gy), gr, 0, TAU, 32, Color("331a08", 0.35), 14.0)
+				for tooth in 10:
+					var ga := anim * 0.35 * (1.0 if g == 0 else -1.0) + float(tooth) * (TAU / 10.0)
+					var gp := Vector2(gx, gy) + Vector2(cos(ga), sin(ga)) * (gr + 12.0)
+					draw_line(Vector2(gx, gy), gp, Color("331a08", 0.35), 16.0)
+
 	# Slow-motion visual field border
 	if slowmo_timer > 0.0:
 		var pulse := 0.08 + 0.05 * sin(anim * 8.0)
 		draw_rect(Rect2(0, 0, 720, 1280), Color("38b6ff", pulse), false, 10.0)
 	
-	# Ambient atmospheric motes
-	for i in 16:
-		var x := float((i * 173 + world * 53) % 750) - 15.0
-		var y := float((i * 251 + world * 119) % 1050) + 150.0 + sin(anim * 0.5 + i) * 8.0
+	# 3. Dynamic Atmospheric Living Motes (Drifting and swaying with Gravity!)
+	var grav := player.gravity_direction if player != null else Vector2.DOWN
+	for i in 18:
+		var grav_drift := grav * (18.0 + float(i % 5) * 4.0)
+		var x := float((i * 173 + world * 53) % 750) - 15.0 + grav_drift.x * sin(anim * 1.5 + float(i))
+		var y := float((i * 251 + world * 119) % 1050) + 150.0 + grav_drift.y * cos(anim * 1.5 + float(i))
 		match world:
 			0:
-				# Floating airy petal / feather
-				draw_circle(Vector2(x, y), 2.2 + float(i % 3), Color("ffd8eb", 0.55))
+				# Floating airy gold petal / feather
+				var feather_alpha := 0.45 + 0.3 * sin(anim * 2.5 + float(i))
+				draw_circle(Vector2(x, y), 2.5, Color("ffd55e", feather_alpha))
+				draw_circle(Vector2(x, y), 5.5, Color("74ddff", feather_alpha * 0.35))
 			1:
-				# Bioluminescent spores
-				var p_pulse := 0.4 + 0.6 * sin(anim * 2.0 + i)
-				draw_circle(Vector2(x, y), 7.0, Color("3fe08c", 0.12 * p_pulse))
-				draw_circle(Vector2(x, y), 2.5, Color("b8ffe2", 0.75 * p_pulse))
+				# Bioluminescent spores & fireflies
+				var p_pulse := 0.5 + 0.5 * sin(anim * 3.0 + float(i) * 1.2)
+				draw_circle(Vector2(x, y), 8.0, Color("3fe08c", 0.16 * p_pulse))
+				draw_circle(Vector2(x, y), 2.8, Color("b8ffe2", 0.85 * p_pulse))
+				draw_circle(Vector2(x, y), 1.2, Color("ffffff", 0.95 * p_pulse))
 			2:
-				# Refractive crystal polygon
+				# Refractive crystal prism
+				var prism_pulse := 0.4 + 0.4 * sin(anim * 3.5 + float(i))
 				draw_colored_polygon(PackedVector2Array([
-					Vector2(x, y - 26), Vector2(x + 14, y), Vector2(x, y + 22), Vector2(x - 14, y)
-				]), Color("d7f8ff", 0.22))
+					Vector2(x, y - 18), Vector2(x + 10, y), Vector2(x, y + 16), Vector2(x - 10, y)
+				]), Color("c47aff", 0.35 * prism_pulse))
 			3:
 				# Twinkling cosmic stars
 				var star_size := 2.5 + float(i % 3)
-				draw_circle(Vector2(x, y), star_size, Color("fff6d0", 0.70))
+				var star_pulse := 0.5 + 0.5 * sin(anim * 4.0 + float(i))
+				draw_circle(Vector2(x, y), star_size * star_pulse, Color("fff6d0", 0.85))
+				draw_circle(Vector2(x, y), star_size * 2.5 * star_pulse, Color("74ddff", 0.25))
 			4:
-				# Clockwork glowing embers
-				draw_circle(Vector2(x, y), 3.0 + float(i % 2) * 2.0, Color("ff9944", 0.60))
+				# Clockwork glowing molten embers
+				var ember_pulse := 0.6 + 0.4 * sin(anim * 5.0 + float(i))
+				draw_circle(Vector2(x, y), 3.2, Color("ff9944", 0.8 * ember_pulse))
+				draw_circle(Vector2(x, y), 7.0, Color("ff3b30", 0.25 * ember_pulse))
 				
 	draw_rect(FIELD, Color("030b1f", 0.10), true)
 	
@@ -552,13 +626,18 @@ func draw_themed_hazard(p: Vector2, radius: float) -> void:
 		1:
 			# Magic Forest: Carnivorous Bramble / Spiked Thorn Maw
 			var r := radius * 1.35
-			draw_circle(p, r + 12, Color("3fe08c", 0.16))
-			for thorn in 6:
-				var a := anim * 2.2 + float(thorn) * (TAU / 6.0)
-				var tip := p + Vector2(cos(a), sin(a)) * (r + 8.0)
-				draw_line(p, tip, Color("9affc4", 0.9), 3.5, true)
-			texture_at(SAW, p, Vector2(radius * 2.6, radius * 2.6), Color("b8ffe2"), anim * 2.2)
-			draw_circle(p, 9.0, Color("802d99"))
+			draw_circle(p, r + 14, Color("3fe08c", 0.20))
+			draw_circle(p, r + 8, Color("144d2d", 0.45))
+			for thorn in 8:
+				var a := anim * 2.5 + float(thorn) * (TAU / 8.0)
+				var tip := p + Vector2(cos(a), sin(a)) * (r + 10.0)
+				var base_l := p + Vector2(cos(a - 0.2), sin(a - 0.2)) * (r * 0.7)
+				var base_r := p + Vector2(cos(a + 0.2), sin(a + 0.2)) * (r * 0.7)
+				draw_colored_polygon(PackedVector2Array([base_l, tip, base_r]), Color("3fe08c", 0.9))
+			texture_at(SAW, p, Vector2(radius * 2.7, radius * 2.7), Color("b8ffe2"), anim * 2.5)
+			var snap := 0.5 + 0.5 * sin(anim * 6.0)
+			draw_circle(p, 10.0, Color("6b1834"))
+			draw_circle(p, 5.0 * snap, Color("ff4971"))
 		2:
 			# Crystal World: Radiant Crystal Star Shard
 			var r := radius * 1.4
@@ -579,7 +658,7 @@ func draw_themed_hazard(p: Vector2, radius: float) -> void:
 			texture_at(SAW, p, Vector2(radius * 2.7, radius * 2.7), Color("9bb1ff"), anim * 1.8)
 			draw_circle(p, 10.0, Color("0b0922"))
 		4:
-			# Mechanical Factory: Industrial Steel Gear with Molten Core
+			# Mechanical Factory: Industrial Steel Gear with Molten Core & Friction Sparks
 			var r := radius * 1.35
 			draw_circle(p, r + 14, Color("ff7a29", 0.22))
 			for tooth in 8:
@@ -588,6 +667,10 @@ func draw_themed_hazard(p: Vector2, radius: float) -> void:
 				draw_line(p, tip, Color("ffd84d", 0.9), 4.0, true)
 			texture_at(SAW, p, Vector2(radius * 2.7, radius * 2.7), Color("ffaa77"), anim * 3.5)
 			draw_circle(p, 9.0, Color("ff3b30"))
+			for sp in 3:
+				var sa := anim * 7.0 + float(sp) * 2.1
+				var spark_pt := p + Vector2(cos(sa), sin(sa)) * (r + 4.0) + Vector2(-sin(sa), cos(sa)) * (float((sp * 7) % 11) + 4.0)
+				draw_circle(spark_pt, 2.0, Color("ffe380"))
 
 func texture_at(source: Texture2D, center: Vector2, size: Vector2, tint: Color = Color.WHITE, angle: float = 0.0) -> void:
 	draw_set_transform(center, angle)
