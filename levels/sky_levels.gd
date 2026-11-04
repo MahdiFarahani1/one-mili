@@ -82,7 +82,8 @@ static func build(number: int) -> Dictionary:
 	else:
 		if number >= 8:
 			var gate: Dictionary = gates[1]
-			hazards.append({"kind": "mover", "center": Vector2(float(gate["x"]) + 65.0, float(gate["center"]) + 175.0), "radius": 15.0, "phase": 0.8, "amplitude": 23.0})
+			var mover_offset := 135.0 if number == 12 else 65.0
+			hazards.append({"kind": "mover", "center": Vector2(float(gate["x"]) + mover_offset, float(gate["center"]) + 175.0), "radius": 15.0, "phase": 0.8, "amplitude": 23.0})
 		if number == 12:
 			hazards.append({"kind": "storm", "center": Vector2(355, 330), "start": Vector2(290, 330), "end": Vector2(420, 330), "phase": 1.4})
 

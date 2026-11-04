@@ -108,9 +108,10 @@ static func challenge_hazards(world: int, number: int, gates: Array, axis: Strin
 				2:
 					# Chapter 3: High speed crystalline saw clusters
 					if i % 2 == 1 and number != 39:
+						var outer_x := 110.0 if center < 360.0 else 610.0
 						result.append({
 							"kind": "saw",
-							"center": Vector2(flank_x, y - 58.0),
+							"center": Vector2(outer_x, y - 58.0),
 							"radius": 18.0,
 							"phase": float(i) * 0.6
 						})
@@ -134,9 +135,10 @@ static func challenge_hazards(world: int, number: int, gates: Array, axis: Strin
 				4:
 					# Chapter 5: Factory mechanical pistons
 					if i % 2 == 0:
+						var outer_x := 110.0 if center < 360.0 else 610.0
 						result.append({
 							"kind": "mover",
-							"center": Vector2(flank_x, y - 60.0),
+							"center": Vector2(outer_x, y - 60.0),
 							"radius": 18.0,
 							"phase": float(i) * 0.9 + float(number % 3) * 0.4,
 							"amplitude": 26.0
@@ -169,9 +171,10 @@ static func challenge_hazards(world: int, number: int, gates: Array, axis: Strin
 						})
 				4:
 					if i % 2 == 1:
+						var outer_y := clampf(center_y + (width_y * 0.5 + 70.0) * (1.0 if center_y > 690.0 else -1.0), 320.0, 1060.0)
 						result.append({
 							"kind": "mover",
-							"center": Vector2(x + 50.0, flank_y),
+							"center": Vector2(x + 50.0, outer_y),
 							"radius": 18.0,
 							"phase": float(i) * 1.1,
 							"amplitude": 24.0

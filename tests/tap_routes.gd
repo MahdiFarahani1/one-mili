@@ -8,8 +8,12 @@ func _initialize() -> void:
 func run() -> void:
 	var stage_script = load("res://scripts/stage.gd")
 	var failures: Array[int] = []
-	for number in [2, 6, 12, 13, 24, 25, 37, 44, 60]:
+	var levels_to_test := [2, 6, 12, 13, 24, 25, 37, 44, 60]
+	if OS.has_environment("TAP_TEST_LEVEL"):
+		levels_to_test = [int(OS.get_environment("TAP_TEST_LEVEL"))]
+	for number in levels_to_test:
 		var stage: Node2D = stage_script.new(Data.level(number))
+		stage.record_failures = false
 		root.add_child(stage)
 		var state := {"won": false, "lost": false}
 		stage.won.connect(func(_seconds: float, _turns: int, _count: int): state["won"] = true)
@@ -31,7 +35,7 @@ func run() -> void:
 				var dx: float = target.x - player.position.x
 				if absf(dx) > 18.0 or absf(player.velocity.x) > 85.0:
 					desired = Vector2.RIGHT if dx - player.velocity.x * 0.17 > 0 else Vector2.LEFT
-			if player.gravity_direction != desired and step - last_tap >= 12:
+			if player.gravity_direction != desired and step - last_tap >= 2:
 				stage.rotate_gravity()
 				last_tap = step
 			await physics_frame

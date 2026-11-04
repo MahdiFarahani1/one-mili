@@ -16,6 +16,14 @@ const PORTAL = preload("res://assets/sprites/portal.png")
 const CRYSTAL = preload("res://assets/sprites/crystal.png")
 const EMITTER = preload("res://assets/sprites/laser_emitter.png")
 const LEVEL_ONE_SKY = preload("res://assets/backgrounds/level_01_sky.png")
+const ORNAMENTS = [
+	preload("res://assets/ornaments/sky_shrine.png"),
+	preload("res://assets/ornaments/forest_tree.png"),
+	preload("res://assets/ornaments/crystal_obelisk.png"),
+	preload("res://assets/ornaments/cosmic_observatory.png"),
+	preload("res://assets/ornaments/factory_drone.png")
+]
+const FONT = preload("res://assets/fonts/Vazirmatn.ttf")
 const BACKGROUNDS = [
 	preload("res://assets/backgrounds/candy.png"),
 	preload("res://assets/backgrounds/jungle.png"),
@@ -37,6 +45,9 @@ var powerups: Array[Dictionary] = []
 var seconds := 0.0
 var turns := 0
 var combo := 0
+var chain_timer := 0.0
+var style_bonus := 0
+var near_style_count := 0
 var collected := 0
 var bonus_collected := false
 var ended := false
@@ -49,6 +60,8 @@ var last_failure := ""
 var turn_flash := 0.0
 var shake_intensity := 0.0
 var effects: Array[Dictionary] = []
+var motion_trail: Array[Dictionary] = []
+var trail_sample_time := 0.0
 var record_failures := true
 
 # Special gameplay power-up states
@@ -181,6 +194,9 @@ func restart() -> void:
 	anim = 0.0
 	turns = 0
 	combo = 0
+	chain_timer = 0.0
+	style_bonus = 0
+	near_style_count = 0
 	collected = 0
 	bonus_collected = false
 	ended = false
@@ -193,6 +209,8 @@ func restart() -> void:
 	slowmo_timer = 0.0
 	invulnerable_timer = 0.0
 	effects.clear()
+	motion_trail.clear()
+	trail_sample_time = 0.0
 	for c in crystals:
 		c["taken"] = false
 	for pu in powerups:
@@ -214,6 +232,9 @@ func _physics_process(delta: float) -> void:
 		effective_delta = delta * 0.45
 
 	anim += effective_delta
+	chain_timer = maxf(0.0, chain_timer - delta)
+	if chain_timer <= 0.0:
+		combo = 0
 	turn_flash = maxf(0.0, turn_flash - delta)
 	
 	if camera != null:
@@ -233,6 +254,16 @@ func _physics_process(delta: float) -> void:
 		effects[index]["life"] -= delta
 		if effects[index]["life"] <= 0.0:
 			effects.remove_at(index)
+	for index in range(motion_trail.size() - 1, -1, -1):
+		motion_trail[index]["life"] -= delta
+		if motion_trail[index]["life"] <= 0.0:
+			motion_trail.remove_at(index)
+	trail_sample_time -= delta
+	if not ended and player.velocity.length() > 115.0 and trail_sample_time <= 0.0:
+		motion_trail.append({"p": player.position, "life": 0.38})
+		if motion_trail.size() > 10:
+			motion_trail.pop_front()
+		trail_sample_time = 0.045
 			
 	var movement_start := previous_player_position
 	previous_player_position = player.position
@@ -284,7 +315,13 @@ func _physics_process(delta: float) -> void:
 		if segment_distance(movement_start, player.position, next["position"]) < 40.0:
 			next["taken"] = true
 			collected += 1
-			combo += 1
+			combo = mini(combo + 1, 4)
+			chain_timer = 4.5
+			if combo >= 2:
+				var earned := mini(combo - 1, 12 - style_bonus)
+				style_bonus += earned
+				if earned > 0:
+					float_text(next["position"], "+%d  ×%d" % [earned, combo], Color("ffe89a"))
 			Sound.tone("crystal")
 			trigger_shake(2.0)
 			burst(next["position"], Color("ffe7a2"), 14, 95.0)
@@ -346,6 +383,11 @@ func _physics_process(delta: float) -> void:
 			fail(kind)
 		elif distance < float(hazard["radius"]) + player.radius + 18.0 and near_cooldown <= 0.0:
 			near_cooldown = 1.0
+			if player.velocity.length() > 250.0 and near_style_count < 3:
+				near_style_count += 1
+				if style_bonus < 12:
+					style_bonus += 1
+					float_text(player.position + Vector2(0, -27), "+1", Color("b2f7ff"))
 			player.expression = "fear"
 			trigger_shake(4.5)
 			burst(player.position.lerp(p, 0.5), Color("ffe680"), 8, 75.0)
@@ -362,7 +404,7 @@ func _physics_process(delta: float) -> void:
 		trigger_shake(6.0)
 		burst(player.position, Color("a4f4ff"), 24, 160.0)
 		Sound.tone("win")
-		won.emit(seconds, turns, collected + (8 if bonus_collected else 0))
+		won.emit(seconds, turns, collected + (8 if bonus_collected else 0) + style_bonus)
 		
 	queue_redraw()
 
@@ -384,6 +426,9 @@ func burst(center: Vector2, tint: Color, count: int, speed: float) -> void:
 		})
 	if effects.size() > 90:
 		effects = effects.slice(effects.size() - 90)
+
+func float_text(center: Vector2, value: String, tint: Color) -> void:
+	effects.append({"kind": "text", "text": value, "p": center, "v": Vector2(0, -32), "life": 0.9, "color": tint})
 
 func horizontal_beam_hit(start: Vector2, finish: Vector2, beam_start: Vector2, beam_end: Vector2) -> bool:
 	var min_x := minf(beam_start.x, beam_end.x) - player.radius
@@ -493,6 +538,7 @@ func _draw() -> void:
 					var ga := anim * 0.35 * (1.0 if g == 0 else -1.0) + float(tooth) * (TAU / 10.0)
 					var gp := Vector2(gx, gy) + Vector2(cos(ga), sin(ga)) * (gr + 12.0)
 					draw_line(Vector2(gx, gy), gp, Color("331a08", 0.35), 16.0)
+	draw_ambient_life(mid_offset)
 
 	# Slow-motion visual field border
 	if slowmo_timer > 0.0:
@@ -537,6 +583,11 @@ func _draw() -> void:
 	if world == 0:
 		for prop in details.get("sky_props", []):
 			draw_sky_prop(prop)
+	else:
+		for prop in details.get("world_props", []):
+			draw_world_prop(prop)
+	draw_ornament()
+	draw_motion_trail(base)
 				
 	if not first_level:
 		draw_rect(FIELD, Color("030b1f", 0.10), true)
@@ -616,6 +667,7 @@ func _draw() -> void:
 		var position: Vector2 = c["position"] + Vector2(0, sin(anim * 3.0 + c["position"].x) * 4.0)
 		draw_circle(position, 25, Color("ffcf71", 0.20))
 		texture_at(CRYSTAL, position, Vector2(30, 49), Color.WHITE, sin(anim * 2.0) * 0.08)
+		draw_target_corners(position, Color("ffe6a1"))
 		
 	var bonus_position: Vector2 = details.get("bonus", Vector2.ZERO)
 	if bonus_position != Vector2.ZERO and not bonus_collected:
@@ -627,6 +679,11 @@ func _draw() -> void:
 	var unlocked := collected >= crystals.size()
 	var goal_size := 84.0 + sin(anim * 3.0) * 4.0
 	texture_at(PORTAL, goal, Vector2(goal_size, goal_size), Color.WHITE if unlocked else Color("8391b1", 0.68), -anim * 0.22)
+	if unlocked:
+		for marker in 4:
+			var angle := float(marker) * TAU / 4.0 + anim * 0.55
+			var tip := goal + Vector2.from_angle(angle) * (48.0 + sin(anim * 3.0) * 4.0)
+			draw_circle(tip, 3.5, Color("fff0bd", 0.75))
 	
 	# Active player energy shield
 	if has_shield:
@@ -651,8 +708,77 @@ func _draw() -> void:
 		var point: Vector2 = effect["p"]
 		var tint: Color = effect["color"]
 		tint.a = clampf(float(effect["life"]) * 1.8, 0.0, 0.85)
-		draw_line(point + Vector2(-3, 0), point + Vector2(3, 0), tint, 2, true)
-		draw_line(point + Vector2(0, -3), point + Vector2(0, 3), tint, 2, true)
+		if effect.get("kind", "") == "text":
+			draw_string(FONT, point, str(effect["text"]), HORIZONTAL_ALIGNMENT_CENTER, 90, 23, tint)
+		else:
+			draw_line(point + Vector2(-3, 0), point + Vector2(3, 0), tint, 2, true)
+			draw_line(point + Vector2(0, -3), point + Vector2(0, 3), tint, 2, true)
+
+func draw_ambient_life(parallax: Vector2) -> void:
+	var number := int(details.get("number", 1))
+	for index in 3:
+		var phase := float(index) * 2.3 + float(number) * 0.7
+		var p := Vector2(92.0 + float((number * 79 + index * 193) % 525), 350.0 + float(index) * 280.0)
+		p += parallax + Vector2(sin(anim * 0.8 + phase) * 24.0, cos(anim * 1.1 + phase) * 13.0)
+		match world:
+			0:
+				var wing := 8.0 + sin(anim * 4.5 + phase) * 3.0
+				draw_line(p, p + Vector2(-wing, -5), Color("fff6dc", 0.48), 2.0, true)
+				draw_line(p, p + Vector2(wing, -5), Color("fff6dc", 0.48), 2.0, true)
+			1:
+				var flutter := 5.0 + sin(anim * 7.0 + phase) * 2.5
+				draw_circle(p + Vector2(-flutter, -2), 5.0, Color("87ffe5", 0.20))
+				draw_circle(p + Vector2(flutter, -2), 5.0, Color("f1a7ff", 0.26))
+				draw_circle(p, 2.3, Color("fff5cf", 0.75))
+			2:
+				var spin := anim * 0.8 + phase
+				var shard := PackedVector2Array()
+				for corner in 4:
+					var angle := spin + float(corner) * TAU / 4.0
+					shard.append(p + Vector2.from_angle(angle) * (10.0 if corner % 2 == 0 else 5.0))
+				draw_colored_polygon(shard, Color("c4a1ff", 0.31))
+			3:
+				draw_arc(p, 12.0, anim * 0.3, anim * 0.3 + PI * 1.6, 16, Color("a5c3ff", 0.33), 1.5, true)
+				draw_circle(p, 4.0, Color("e7d7ff", 0.45))
+				draw_circle(p + Vector2.from_angle(anim + phase) * 12.0, 2.0, Color("fff2bb", 0.70))
+			4:
+				draw_line(p + Vector2(-15, -7), p + Vector2(-6, 0), Color("ffba65", 0.42), 2.0, true)
+				draw_line(p + Vector2(15, -7), p + Vector2(6, 0), Color("ffba65", 0.42), 2.0, true)
+				draw_circle(p, 7.0, Color("986339", 0.43))
+				draw_circle(p, 2.5, Color("ffe0a1", 0.73))
+
+func draw_motion_trail(tint: Color) -> void:
+	for sample in motion_trail:
+		var life: float = sample["life"] / 0.38
+		var p: Vector2 = sample["p"]
+		var glow := tint
+		glow.a = 0.09 * life
+		draw_circle(p, 16.0 * life + 4.0, glow)
+		var core := tint.lightened(0.5)
+		core.a = 0.28 * life
+		draw_circle(p, 3.5 * life + 1.0, core)
+
+func draw_target_corners(center: Vector2, tint: Color) -> void:
+	var radius := 28.0 + sin(anim * 3.0) * 2.5
+	var marker_tint := tint
+	marker_tint.a = 0.45 + 0.2 * sin(anim * 3.0)
+	for horizontal in [-1.0, 1.0]:
+		for vertical in [-1.0, 1.0]:
+			var corner := center + Vector2(horizontal, vertical) * radius
+			draw_line(corner, corner - Vector2(horizontal * 8.0, 0), marker_tint, 2.0, true)
+			draw_line(corner, corner - Vector2(0, vertical * 8.0), marker_tint, 2.0, true)
+
+func draw_ornament() -> void:
+	var number := int(details.get("number", 1))
+	var local := (number - 1) % 12
+	var index := (local + world) % 3
+	var x := 602.0 if (local + world) % 2 == 0 else 118.0
+	var y: float = [410.0, 650.0, 890.0][index]
+	var position := Vector2(x, y) + Vector2(sin(anim * 0.65 + number) * 5.0, cos(anim * 0.85 + number) * 7.0)
+	var height := 155.0 if world in [1, 2] else 135.0
+	var asset: Texture2D = ORNAMENTS[world]
+	var size := Vector2(height * asset.get_width() / asset.get_height(), height)
+	texture_at(asset, position, size, Color(1.0, 1.0, 1.0, 0.66), sin(anim * 0.55 + number) * 0.025)
 
 func draw_first_level_walls() -> void:
 	# Keep the physics boundary readable without covering the floating-island art.
@@ -801,3 +927,51 @@ func draw_sky_prop(prop: Dictionary) -> void:
 			var angle := anim * 1.7 + float(blade) * TAU / 4.0
 			var tip := p + Vector2(0, -7) + Vector2(cos(angle), sin(angle)) * 22.0
 			draw_line(p + Vector2(0, -7), tip, Color("d5f9ff", 0.75), 3.0, true)
+
+func draw_world_prop(prop: Dictionary) -> void:
+	var p: Vector2 = prop["position"]
+	var phase: float = float(prop["phase"])
+	var pulse := 0.65 + 0.25 * sin(anim * 2.0 + phase)
+	match str(prop["kind"]):
+		"bloom":
+			draw_circle(p, 24.0, Color("53ffb9", 0.12 * pulse))
+			for petal in 6:
+				var angle := float(petal) * TAU / 6.0 + sin(anim + phase) * 0.08
+				var tip := p + Vector2(cos(angle), sin(angle)) * 13.0
+				draw_circle(tip, 6.0, Color("f285d9", 0.63 * pulse))
+			draw_circle(p, 6.0, Color("fff2ac", pulse))
+		"lantern":
+			draw_line(p + Vector2(0, -27), p + Vector2(0, -13), Color("79dba6", 0.7), 2.0)
+			draw_circle(p, 23.0, Color("63ffbf", 0.08 * pulse))
+			draw_colored_polygon(PackedVector2Array([p + Vector2(-8, -12), p + Vector2(8, -12), p + Vector2(12, 7), p + Vector2(0, 14), p + Vector2(-12, 7)]), Color("123e38", 0.65))
+			draw_circle(p, 5.0, Color("b5ffe4", pulse))
+		"prism":
+			var tip := p + Vector2(0, -24.0 - sin(anim * 1.5 + phase) * 3.0)
+			draw_colored_polygon(PackedVector2Array([p + Vector2(-12, 10), tip, p + Vector2(12, 10)]), Color("b36aff", 0.46 * pulse))
+			draw_line(p + Vector2(-12, 10), tip, Color("e6c7ff", 0.8), 1.5, true)
+			draw_line(tip, p + Vector2(12, 10), Color("8feeff", 0.8), 1.5, true)
+		"rune":
+			draw_arc(p, 18.0, 0.0, TAU, 24, Color("bd8bff", 0.45 * pulse), 2.0, true)
+			draw_line(p + Vector2(-8, 0), p + Vector2(8, 0), Color("b6faff", 0.8), 2.0, true)
+			draw_line(p + Vector2(0, -8), p + Vector2(0, 8), Color("b6faff", 0.8), 2.0, true)
+		"satellite":
+			draw_arc(p, 21.0, anim * 0.3 + phase, anim * 0.3 + phase + PI * 1.4, 20, Color("9bb9ff", 0.46), 2.0, true)
+			draw_circle(p, 8.0, Color("adc8ff", 0.62))
+			draw_circle(p + Vector2(17, -11), 3.0, Color("fff6c8", pulse))
+		"comet":
+			var shift := Vector2(sin(anim * 0.7 + phase) * 8.0, cos(anim * 0.7 + phase) * 5.0)
+			draw_line(p + shift + Vector2(-22, 13), p + shift, Color("78dfff", 0.44), 4.0, true)
+			draw_circle(p + shift, 6.0, Color("f7f5ff", pulse))
+		"valve":
+			draw_arc(p, 18.0, 0.0, TAU, 24, Color("f5a951", 0.6), 3.0, true)
+			for spoke in 4:
+				var angle := anim * 0.4 + phase + float(spoke) * TAU / 4.0
+				draw_line(p, p + Vector2(cos(angle), sin(angle)) * 15.0, Color("ffd189", 0.7), 2.0, true)
+			draw_circle(p, 4.0, Color("ffe5ae", pulse))
+		"vent":
+			draw_rect(Rect2(p - Vector2(13, 7), Vector2(26, 14)), Color("6a3e24", 0.7))
+			for slot in 3:
+				var x := p.x - 8.0 + float(slot) * 8.0
+				draw_line(Vector2(x, p.y - 4), Vector2(x, p.y + 4), Color("ffca77", 0.62), 2.0, true)
+			var ember := p + Vector2(sin(anim * 2.0 + phase) * 7.0, -20.0 - fmod(anim * 9.0 + phase * 7.0, 15.0))
+			draw_circle(ember, 2.5, Color("ffb75b", pulse))

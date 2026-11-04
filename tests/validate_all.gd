@@ -50,6 +50,16 @@ func run() -> void:
 						failures.append("laser too close to checkpoint %d" % n)
 		if float(level["par_time"]) <= 0 or int(level["par_turns"]) < 2:
 			failures.append("par target %d" % n)
+		if n >= 13:
+			var props: Array = level.get("world_props", [])
+			if props.size() != gates.size():
+				failures.append("chapter props %d" % n)
+			for prop in props:
+				var position: Vector2 = prop["position"]
+				if position.x < 80.0 or position.x > 640.0 or position.y < 250.0 or position.y > 1130.0:
+					failures.append("chapter prop outside stage %d" % n)
+			if level["obstacles"].size() != gates.size() * 2:
+				failures.append("chapter platform count %d" % n)
 	print("LEVEL DATA: ", "OK 60 unique routes" if failures.is_empty() else "FAIL %d" % failures.size())
 	for failure in failures: print(failure)
 	quit(0 if failures.is_empty() else 1)

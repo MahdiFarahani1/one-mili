@@ -2,6 +2,7 @@ extends RefCounted
 
 const Chapter = preload("res://levels/chapter_challenge.gd")
 const SkyLevels = preload("res://levels/sky_levels.gd")
+const WorldRoutes = preload("res://levels/world_routes.gd")
 
 # Every chamber tests precision, gravity control, and routing.
 # 60 levels divided into 5 distinct chapters of 12 levels each:
@@ -44,11 +45,7 @@ static func build(number: int) -> Dictionary:
 	
 	for i in rows.size():
 		var y: float = rows[i]
-		var leftward := (n + i + world) % 2 == 0
-		var drift := float(((n * 29 + i * 43) % 61) - 30)
-		var center := clampf((230.0 if leftward else 490.0) + drift, 205.0, 515.0)
-		if n <= 3:
-			center = 200.0 + 45.0 * (n - 1) + 35.0 * i
+		var center := float(WorldRoutes.centers(n)[i])
 			
 		var width := maxf(125.0, 236.0 - tier * 18.0 - float((n + i * 7) % 3) * 6.0 - float(Chapter.profile(world)["gate_penalty"]))
 		if n <= 3:
@@ -58,14 +55,7 @@ static func build(number: int) -> Dictionary:
 		var right_start := center + width * 0.5
 		
 		# Material diversity based on chapter
-		var material := "normal"
-		if n >= 25 and i == gate_count - 1:
-			match world:
-				1: material = "fragile" if n % 2 == 0 else "sticky" # Forest vine/moss
-				2: material = "ice" if n % 2 == 0 else "fragile"     # Crystal brittle/slick
-				3: material = "spring" if n % 2 == 0 else "ice"     # Cosmic bounce
-				4: material = "fragile" if n % 2 == 0 else "spring" # Factory mechanical
-				_: material = "normal"
+		var material := WorldRoutes.material(world, local, i)
 				
 		obstacles.append({"rect": Rect2(60.0, y, left_end - 60.0, 28.0), "kind": material})
 		obstacles.append({"rect": Rect2(right_start, y, 660.0 - right_start, 28.0), "kind": material})
@@ -89,15 +79,16 @@ static func build(number: int) -> Dictionary:
 		# Lasers: timed hazards with clear opening corridors
 		if n >= 27 and i == 1 and n % 3 == 0:
 			var laser_y := y - 150.0
-			if n == 39:
-				# Level 39 fix: flank laser leaving central traversal corridor clear
+			if n == 39 or n == 45:
+				# Keep the timed beam on a side lane; the mandatory crystal route stays open.
+				var beam_end_x := 180.0 if n == 45 else 295.0
 				hazards.append({
 					"kind": "laser",
-					"center": Vector2(195.0, laser_y),
+					"center": Vector2((95.0 + beam_end_x) * 0.5, laser_y),
 					"radius": 0.0,
 					"phase": 1.4,
 					"start": Vector2(95.0, laser_y),
-					"end": Vector2(295.0, laser_y)
+					"end": Vector2(beam_end_x, laser_y)
 				})
 			else:
 				var start_x := 95.0 if center > 360.0 else center + 55.0
@@ -167,6 +158,7 @@ static func build(number: int) -> Dictionary:
 		"obstacles": obstacles,
 		"hazards": hazards,
 		"gates": gates,
+		"world_props": WorldRoutes.props(world, n, gates, "y"),
 		"powerups": powerups,
 		"par_time": par_time,
 		"par_turns": par_turns
@@ -218,16 +210,12 @@ static func build_sideways(n: int, world: int, local: int) -> Dictionary:
 	
 	for i in columns.size():
 		var x: float = columns[i]
-		var high := (n + i + world) % 2 == 0
-		var drift := float(((n * 17 + i * 37) % 69) - 34)
-		var center := (475.0 if high else 905.0) + drift
+		var center := float(WorldRoutes.centers(n)[i])
 		var width := maxf(175.0, 275.0 - tier * 16.0 - float((n + i) % 3) * 5.0)
 		var top_end := center - width * 0.5
 		var bottom_start := center + width * 0.5
 		
-		var material := "normal"
-		if n >= 25 and i == 0:
-			material = ["ice", "sticky", "spring", "fragile"][(n + world) % 4]
+		var material := WorldRoutes.material(world, local, i)
 			
 		obstacles.append({"rect": Rect2(x, 250.0, 28.0, top_end - 250.0), "kind": material})
 		obstacles.append({"rect": Rect2(x, bottom_start, 28.0, 1130.0 - bottom_start), "kind": material})
@@ -235,9 +223,8 @@ static func build_sideways(n: int, world: int, local: int) -> Dictionary:
 		gates.append({"axis": "x", "x": x, "center": center, "width": width})
 		
 		if n >= 21 and (n + i) % 2 == 0:
-			var side := -1.0 if (i + world) % 2 == 0 else 1.0
-			if i == columns.size() - 1:
-				side = 1.0 if center > 690.0 else -1.0
+			# Keep blades beyond the opening on the outer side of each lane.
+			var side := 1.0 if center > 690.0 else -1.0
 			var saw_y := center + side * (width * 0.5 + 23.0)
 			saw_y = clampf(saw_y, 310.0, 1070.0)
 			hazards.append({
@@ -272,6 +259,7 @@ static func build_sideways(n: int, world: int, local: int) -> Dictionary:
 		"obstacles": obstacles,
 		"hazards": hazards,
 		"gates": gates,
+		"world_props": WorldRoutes.props(world, n, gates, "x"),
 		"powerups": powerups,
 		"par_time": par_time,
 		"par_turns": par_turns

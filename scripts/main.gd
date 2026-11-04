@@ -74,9 +74,13 @@ var endless_run := false
 var anim := 0.0
 var toast := ""
 var toast_time := 0.0
+var toast_panel: Panel
+var toast_label: Label
 var hud_timer_label: Label
 var hud_crystal_label: Label
 var hud_stars_label: Label
+var hud_chain_label: Label
+var hud_progress_fill: ColorRect
 var hud_turns_label: Label
 var hud_rotate_btn: Button
 var current_shop_tab := "skins"
@@ -98,6 +102,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	anim += delta
 	toast_time = maxf(0.0, toast_time - delta)
+	if is_instance_valid(toast_panel):
+		toast_panel.visible = toast_time > 0.0
+	if is_instance_valid(toast_label):
+		toast_label.visible = toast_time > 0.0
 	if screen == "game" and stage != null:
 		if is_instance_valid(hud_timer_label):
 			if stage.slowmo_timer > 0.0:
@@ -108,10 +116,17 @@ func _process(delta: float) -> void:
 				hud_timer_label.add_theme_color_override("font_color", Color("fff2dc"))
 		if is_instance_valid(hud_crystal_label):
 			hud_crystal_label.text = "✦ %d/%d" % [stage.collected, stage.crystals.size()]
+		if is_instance_valid(hud_progress_fill):
+			hud_progress_fill.size.x = 554.0 * float(stage.collected) / maxf(1.0, float(stage.crystals.size()))
 		if is_instance_valid(hud_stars_label) and not endless_run:
 			var target: Dictionary = Data.level(selected_level)
 			var possible := 1 + int(stage.seconds <= float(target["par_time"])) + int(stage.turns <= int(target["par_turns"]))
 			hud_stars_label.text = "★".repeat(possible) + "☆".repeat(3 - possible)
+		if is_instance_valid(hud_chain_label):
+			hud_chain_label.visible = stage.combo > 1 and stage.chain_timer > 0.0
+			if hud_chain_label.visible:
+				hud_chain_label.text = "زنجیره ×%d   ✦ +%d" % [stage.combo, stage.style_bonus]
+				hud_chain_label.modulate.a = clampf(stage.chain_timer, 0.0, 1.0)
 		if is_instance_valid(hud_turns_label):
 			hud_turns_label.text = "⟳ %d" % stage.turns
 	queue_redraw()
@@ -144,13 +159,12 @@ func _draw() -> void:
 		var p := Vector2(float((i * 293 + 57) % 720), float((i * 177 + 41) % 1280))
 		draw_circle(p + Vector2(0, sin(anim * 1.5 + i) * 6.0), 1.6 + float(i % 3), Color("ffdd9b", 0.40))
 		
-	if toast_time > 0.0:
-		draw_rect(Rect2(105, 1140, 510, 68), Color("0d1630", 0.94))
-		draw_rect(Rect2(105, 1140, 510, 68), Color("597fff", 0.5), false, 2)
-
 func clear_ui() -> void:
 	for child in ui.get_children():
 		child.queue_free()
+	toast_panel = null
+	toast_label = null
+	toast_time = 0.0
 	if stage != null:
 		stage.queue_free()
 		stage = null
@@ -296,6 +310,18 @@ func show_game_hud() -> void:
 	hud_style.set_corner_radius_all(22)
 	hud_back.add_theme_stylebox_override("panel", hud_style)
 	ui.add_child(hud_back)
+	var progress_back := ColorRect.new()
+	progress_back.color = Color("c9e8ff", 0.16)
+	progress_back.position = Vector2(120, 123)
+	progress_back.size = Vector2(554, 3)
+	progress_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(progress_back)
+	hud_progress_fill = ColorRect.new()
+	hud_progress_fill.color = Color("ffe2a0")
+	hud_progress_fill.position = progress_back.position
+	hud_progress_fill.size = Vector2(0, 3)
+	hud_progress_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(hud_progress_fill)
 	# Top bar: Pause button, level, live star potential and metrics.
 	button("Ⅱ", 36, 42, 64, 64, func(): screen = "pause"; build_pause(), Color("fff4d2"), 30)
 	label("مرحله %d" % selected_level if not endless_run else "بی‌پایان · %d" % endless_score, 118, 40, 275, 54, 29, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
@@ -303,6 +329,8 @@ func show_game_hud() -> void:
 	
 	hud_timer_label = label("◷ 00:00", 410, 42, 140, 64, 24, Color("fff2dc"))
 	hud_crystal_label = label("✦ 0/0", 555, 42, 130, 64, 24, Color("ffde98"))
+	hud_chain_label = label("", 224, 142, 272, 46, 22, Color("ffe69a"))
+	hud_chain_label.visible = false
 	
 	# Bottom bar: Sleek circular restart and responsive gravity tap
 	var is_pc := not OS.has_feature("mobile")
@@ -336,13 +364,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func on_stage_won(seconds: float, turns: int, count: int) -> void:
 	var details := Data.level(selected_level)
+	var style_bonus := stage.style_bonus if stage != null else 0
 	var previous: Dictionary = Save.data["levels"].get(str(selected_level), {})
 	var record := seconds < float(previous.get("best_time", INF))
 	var stars := 1
 	if seconds <= float(details["par_time"]): stars += 1
 	if turns <= int(details["par_turns"]): stars += 1
 	var reward := Save.complete_level(selected_level, seconds, turns, stars, count)
-	set_meta("last_result", {"stars": stars, "seconds": seconds, "turns": turns, "reward": reward, "record": record})
+	set_meta("last_result", {"stars": stars, "seconds": seconds, "turns": turns, "reward": reward, "record": record, "style_bonus": style_bonus})
 	show_screen("victory")
 
 func on_stage_lost() -> void:
@@ -405,6 +434,8 @@ func build_victory() -> void:
 		
 	label("زمان: %.1f ثانیه   ·   چرخش: %d" % [float(result.get("seconds", 0)), int(result.get("turns", 0))], 90, 500, 540, 55, 25, UI_MUTED)
 	label("+%d کریستال پاداش ✦" % int(result.get("reward", 0)), 90, 562, 540, 55, 31, UI_GOLD)
+	if int(result.get("style_bonus", 0)) > 0:
+		label("پاداش مهارت: +%d ✦" % int(result["style_bonus"]), 120, 617, 480, 42, 22, UI_TEAL)
 	
 	button("مرحلهٔ بعدی  ▶", 130, 670, 460, 84, func(): selected_level = mini(60, selected_level + 1); show_screen("game"), UI_GOLD, 33)
 	button("تلاش مجدد  ↻", 130, 770, 460, 74, func(): show_screen("game"), UI_TEAL, 28)
@@ -600,7 +631,14 @@ func retry_after_loss() -> void:
 func pop_toast(message: String) -> void:
 	toast = message
 	toast_time = 1.7
-	label(message, 105, 1140, 510, 68, 26, Color.WHITE)
+	if not is_instance_valid(toast_panel):
+		toast_panel = make_modal_panel(105, 1067, 510, 70, Color("74ddff"))
+		ui.add_child(toast_panel)
+		toast_label = label(message, 105, 1067, 510, 70, 26, Color.WHITE)
+	else:
+		toast_label.text = message
+	toast_panel.visible = true
+	toast_label.visible = true
 
 # The four presentation screens share one compact neon visual language.
 # Game logic and the gameplay HUD keep their existing implementation.
